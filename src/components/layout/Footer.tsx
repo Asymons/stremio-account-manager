@@ -46,7 +46,17 @@ export function Footer() {
                 <Github className="h-4 w-4" />
                 View Source
               </a>
-              <span className="text-xs">Made with ❤️</span>
+              <span className="text-xs">
+                Made with ❤️ by{' '}
+                <a
+                  href="https://alessio.ca"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Alessio
+                </a>
+              </span>
             </div>
           </div>
         </div>
