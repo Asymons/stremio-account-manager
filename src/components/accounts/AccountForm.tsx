@@ -14,6 +14,7 @@ export function AccountForm() {
   const { addAccountByAuthKey, addAccountByCredentials, updateAccount, loading } = useAccounts()
 
   const [mode, setMode] = useState<'authKey' | 'credentials'>('authKey')
+  const [name, setName] = useState('')
   const [authKey, setAuthKey] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,6 +22,7 @@ export function AccountForm() {
 
   useEffect(() => {
     if (editingAccount) {
+      setName(editingAccount.name)
       if (editingAccount.email) {
         setMode('credentials')
         setEmail(editingAccount.email)
@@ -29,7 +31,7 @@ export function AccountForm() {
         setPassword('')
       } else {
         setMode('authKey')
-        // Same for authKey, it's safer not to show decrypted key if possible, 
+        // Same for authKey, it's safer not to show decrypted key if possible,
         // or decrypt it if we want to show it.
         try {
           setAuthKey(decrypt(editingAccount.authKey))
@@ -40,6 +42,7 @@ export function AccountForm() {
     } else {
       // Reset defaults for add mode
       setMode('authKey')
+      setName('')
       setAuthKey('')
       setEmail('')
       setPassword('')

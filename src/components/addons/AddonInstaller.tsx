@@ -4,13 +4,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useUIStore } from '@/store/uiStore'
-import { useAccounts } from '@/hooks/useAccounts'
 import { useAccountStore } from '@/store/accountStore'
 
 export function AddonInstaller() {
   const isOpen = useUIStore((state) => state.isAddAddonDialogOpen)
   const closeDialog = useUIStore((state) => state.closeAddAddonDialog)
-  const { selectedAccountId } = useAccounts()
+  const selectedAccountId = useUIStore((state) => state.selectedAccountId)
   const installAddon = useAccountStore((state) => state.installAddonToAccount)
   const loading = useAccountStore((state) => state.loading)
 

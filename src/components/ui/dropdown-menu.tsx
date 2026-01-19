@@ -53,7 +53,7 @@ interface DropdownMenuContentProps extends React.HTMLAttributes<HTMLDivElement> 
 }
 
 const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContentProps>(
-    ({ className, align = "end", children, ...props }, ref) => {
+    ({ className, align = "end", children, ...props }, _ref) => {
         const context = React.useContext(DropdownMenuContext)
         if (!context) throw new Error("DropdownMenuContent must be used within DropdownMenu")
 

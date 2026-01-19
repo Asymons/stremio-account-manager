@@ -74,7 +74,7 @@ export function AddonList({ accountId }: AddonListProps) {
             <Library className="h-4 w-4 mr-2" />
             Install from Library
           </Button>
-          <Button onClick={openAddAddonDialog}>
+          <Button onClick={() => openAddAddonDialog(accountId)}>
             Install Addon
           </Button>
         </div>
@@ -83,7 +83,7 @@ export function AddonList({ accountId }: AddonListProps) {
       {addons.length === 0 ? (
         <div className="text-center py-12 border border-dashed rounded-lg">
           <p className="text-muted-foreground mb-4">No addons installed</p>
-          <Button onClick={openAddAddonDialog}>
+          <Button onClick={() => openAddAddonDialog(accountId)}>
             Install Your First Addon
           </Button>
         </div>

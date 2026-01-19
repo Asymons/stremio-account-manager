@@ -10,9 +10,9 @@ export function NotFoundPage() {
         <p className="text-muted-foreground mb-6">
           The page you're looking for doesn't exist.
         </p>
-        <Button asChild>
-          <Link to="/">Return Home</Link>
-        </Button>
+        <Link to="/">
+          <Button>Return Home</Button>
+        </Link>
       </div>
     </div>
   )

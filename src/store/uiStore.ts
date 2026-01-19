@@ -9,13 +9,14 @@ interface UIStore {
 
   openAddAccountDialog: (account?: StremioAccount) => void
   closeAddAccountDialog: () => void
-  openAddAddonDialog: () => void
+  openAddAddonDialog: (accountId: string) => void
   closeAddAddonDialog: () => void
   openExportDialog: () => void
   closeExportDialog: () => void
   openImportDialog: () => void
   closeImportDialog: () => void
   editingAccount: StremioAccount | null
+  selectedAccountId: string | null
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -25,11 +26,12 @@ export const useUIStore = create<UIStore>((set) => ({
   isImportDialogOpen: false,
 
   editingAccount: null,
+  selectedAccountId: null,
 
   openAddAccountDialog: (account) => set({ isAddAccountDialogOpen: true, editingAccount: account || null }),
   closeAddAccountDialog: () => set({ isAddAccountDialogOpen: false, editingAccount: null }),
-  openAddAddonDialog: () => set({ isAddAddonDialogOpen: true }),
-  closeAddAddonDialog: () => set({ isAddAddonDialogOpen: false }),
+  openAddAddonDialog: (accountId) => set({ isAddAddonDialogOpen: true, selectedAccountId: accountId }),
+  closeAddAddonDialog: () => set({ isAddAddonDialogOpen: false, selectedAccountId: null }),
   openExportDialog: () => set({ isExportDialogOpen: true }),
   closeExportDialog: () => set({ isExportDialogOpen: false }),
   openImportDialog: () => set({ isImportDialogOpen: true }),
