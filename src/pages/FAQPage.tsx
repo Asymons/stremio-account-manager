@@ -17,7 +17,8 @@ export function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              No. This is an unofficial tool and is not affiliated with Stremio in any way. Use it at your own risk.
+              No. This is an unofficial tool and is not affiliated with Stremio in any way. Use it
+              at your own risk.
             </p>
           </CardContent>
         </Card>
@@ -28,7 +29,12 @@ export function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              This tool is designed for <strong>bulk Stremio account and addon management</strong>. It allows you to manage multiple Stremio accounts, install and remove addons across accounts, and sync configurations. This tool is <strong>not related to specific addons in any way, shape, or form</strong> - it is purely a management interface for your Stremio accounts and their addon configurations.
+              This tool is designed for <strong>bulk Stremio account and addon management</strong>.
+              It allows you to manage multiple Stremio accounts, install and remove addons across
+              accounts, and sync configurations. This tool is{' '}
+              <strong>not related to specific addons in any way, shape, or form</strong> - it is
+              purely a management interface for your Stremio accounts and their addon
+              configurations.
             </p>
           </CardContent>
         </Card>
@@ -39,11 +45,11 @@ export function FAQPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 text-muted-foreground">
+              <p>Using it may break your Stremio profile or cause unexpected behavior.</p>
               <p>
-                Using it may break your Stremio profile or cause unexpected behavior.
-              </p>
-              <p>
-                There is currently no way to 'reset' your addons to previous configurations or default configurations. We recommend exporting your configuration before making changes so you can restore it if needed.
+                There is currently no way to 'reset' your addons to previous configurations or
+                default configurations. We recommend exporting your configuration before making
+                changes so you can restore it if needed.
               </p>
             </div>
           </CardContent>
@@ -56,10 +62,14 @@ export function FAQPage() {
           <CardContent>
             <div className="space-y-3 text-muted-foreground">
               <p>
-                No. This tool is completely client-side only. Everything is stored within your browser's local storage. We do not have any servers, and your data never leaves your device.
+                No. This tool is completely client-side only. Everything is stored within your
+                browser's local storage. We do not have any servers, and your data never leaves your
+                device.
               </p>
               <p>
-                <strong>Important:</strong> If you wipe your browser's cache or local storage, you will lose all your progress. This is why the import/export feature exists - make sure to regularly export your configuration as a backup.
+                <strong>Important:</strong> If you wipe your browser's cache or local storage, you
+                will lose all your progress. This is why the import/export feature exists - make
+                sure to regularly export your configuration as a backup.
               </p>
             </div>
           </CardContent>
@@ -72,19 +82,65 @@ export function FAQPage() {
           <CardContent>
             <div className="space-y-3 text-muted-foreground">
               <p>
-                Yes. Your credentials are stored securely on your device and are never transmitted to any cloud service or third-party server.
+                Yes. Your credentials are stored securely on your device and are never transmitted
+                to any cloud service or third-party server.
               </p>
               <p>
                 <strong>How your credentials are handled:</strong>
               </p>
               <ul className="list-disc list-inside space-y-2 ml-2">
-                <li><strong>Local storage only:</strong> All credentials (auth keys, email addresses, and passwords) are stored locally on your device using your browser's IndexedDB storage. They never leave your computer.</li>
-                <li><strong>Encrypted at rest:</strong> Your credentials are encrypted with AES-256 encryption before being stored, providing an additional layer of security.</li>
-                <li><strong>Stremio API only:</strong> Your credentials are only used to authenticate and interact with Stremio's official APIs. They are never sent to any other service or server.</li>
-                <li><strong>No cloud storage:</strong> This application has no backend servers. Everything runs entirely in your browser, and your data never goes to the cloud.</li>
+                <li>
+                  <strong>Local storage only:</strong> All credentials (auth keys, email addresses,
+                  and passwords) are stored locally on your device using your browser's IndexedDB
+                  storage. They never leave your computer.
+                </li>
+                <li>
+                  <strong>Encrypted at rest:</strong> Your credentials are encrypted with AES-256
+                  encryption before being stored, providing an additional layer of security.
+                </li>
+                <li>
+                  <strong>Stremio API only:</strong> Your credentials are only used to authenticate
+                  and interact with Stremio's official APIs. They are never sent to any other
+                  service or server.
+                </li>
+                <li>
+                  <strong>No cloud storage:</strong> This application has no backend servers.
+                  Everything runs entirely in your browser, and your data never goes to the cloud.
+                </li>
               </ul>
               <p>
-                If you're still in doubt, we highly encourage you to read the source code. You'll see there's no hidden functionality going on - everything is transparent and open.
+                If you're still in doubt, we highly encourage you to read the source code. You'll
+                see there's no hidden functionality going on - everything is transparent and open.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Can I view the source code?</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-muted-foreground">
+              <p>
+                Absolutely! This project is fully open source and available on GitHub. You can view,
+                audit, and even contribute to the code.
+              </p>
+              <p>
+                <strong>Repository:</strong>{' '}
+                <a
+                  href="https://github.com/Asymons/stremio-account-manager"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  https://github.com/Asymons/stremio-account-manager
+                </a>
+              </p>
+              <p>
+                We encourage you to review the code to verify that there's no hidden functionality,
+                malicious code, or data collection happening. Transparency is important to us, and
+                we want you to feel confident about using this tool.
               </p>
             </div>
           </CardContent>
@@ -97,7 +153,8 @@ export function FAQPage() {
           <CardContent>
             <div className="space-y-3 text-muted-foreground">
               <p>
-                Yes! This will allow you to move the Cinemeta provided catalogs (i.e., Popular - Series/Movie and Featured - Series/Movie) from the top of your catalog list.
+                Yes! This will allow you to move the Cinemeta provided catalogs (i.e., Popular -
+                Series/Movie and Featured - Series/Movie) from the top of your catalog list.
               </p>
               <p>
                 Do note that the in-built 'Continue watching' catalog cannot be moved from the top.
@@ -113,13 +170,29 @@ export function FAQPage() {
           <CardContent>
             <div className="space-y-3 text-muted-foreground">
               <p>
-                Protected addons are essential for Stremio's core functionality. For example, Cinemeta provides the metadata and catalog system that Stremio relies on. Removing these addons would break critical features of your Stremio profile, which is why they cannot be removed.
+                Protected addons are essential for Stremio's core functionality. For example,
+                Cinemeta provides the metadata and catalog system that Stremio relies on. Removing
+                these addons would break critical features of your Stremio profile, which is why
+                they cannot be removed.
               </p>
               <p>
-                Usually, people interested in removing protected addons are interested in removing Cinemeta. If you want to remove Cinemeta, you can refer to <a href="https://cinebye.elfhosted.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">https://cinebye.elfhosted.com/</a> for a solution.
+                Usually, people interested in removing protected addons are interested in removing
+                Cinemeta. If you want to remove Cinemeta, you can refer to{' '}
+                <a
+                  href="https://cinebye.elfhosted.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  https://cinebye.elfhosted.com/
+                </a>{' '}
+                for a solution.
               </p>
               <p>
-                If you don't want to risk breaking Stremio's core functionality, a reasonable alternative is to move the addon to the bottom of the list; however, there could be unexpected issues with this approach, although these haven't been observed yet in normal usage.
+                If you don't want to risk breaking Stremio's core functionality, a reasonable
+                alternative is to move the addon to the bottom of the list; however, there could be
+                unexpected issues with this approach, although these haven't been observed yet in
+                normal usage.
               </p>
             </div>
           </CardContent>
@@ -132,45 +205,93 @@ export function FAQPage() {
           <CardContent>
             <div className="space-y-3 text-muted-foreground">
               <p>
-                Your AuthKey is a unique identifier that allows this tool to access your Stremio account and manage your addons. You can retrieve it directly from your browser's local storage when you're logged into Stremio's web interface.
+                Your AuthKey is a unique identifier that allows this tool to access your Stremio
+                account and manage your addons. You can retrieve it directly from your browser's
+                local storage when you're logged into Stremio's web interface.
               </p>
               <p>
-                <strong>Note:</strong> Using your username and password is the easier option (and what we personally recommend), as it doesn't require accessing the developer console. However, if you don't feel comfortable entering your password, you can use your AuthKey instead by following the instructions below.
+                <strong>Note:</strong> Using your username and password is the easier option (and
+                what we personally recommend), as it doesn't require accessing the developer
+                console. However, if you don't feel comfortable entering your password, you can use
+                your AuthKey instead by following the instructions below.
               </p>
               <p>
                 <strong>Step-by-step instructions:</strong>
               </p>
               <ol className="list-decimal list-inside space-y-3 ml-2">
                 <li>
-                  <strong>Log into Stremio:</strong> Open your web browser and navigate to <a href="https://web.stremio.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">https://web.stremio.com/</a>. Make sure you're logged into your Stremio account.
+                  <strong>Log into Stremio:</strong> Open your web browser and navigate to{' '}
+                  <a
+                    href="https://web.stremio.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    https://web.stremio.com/
+                  </a>
+                  . Make sure you're logged into your Stremio account.
                 </li>
                 <li>
-                  <strong>Open the Developer Console:</strong> While on the Stremio website, open your browser's developer console. The browser developer console is a tool which logs the information associated with a web application, such as network requests and errors. It also allows you to interact with the loaded web page using JavaScript. Most modern browsers have a developer console built in.
+                  <strong>Open the Developer Console:</strong> While on the Stremio website, open
+                  your browser's developer console. The browser developer console is a tool which
+                  logs the information associated with a web application, such as network requests
+                  and errors. It also allows you to interact with the loaded web page using
+                  JavaScript. Most modern browsers have a developer console built in.
                   <div className="mt-2 space-y-1">
                     <p className="font-medium">To open the developer console:</p>
                     <ul className="list-disc list-inside space-y-1 ml-4">
-                      <li><strong>Chrome/Edge:</strong> Press <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">F12</kbd> or <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">Ctrl+Shift+I</kbd> (Windows/Linux) or <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">Cmd+Option+I</kbd> (Mac)</li>
-                      <li><strong>Firefox:</strong> Press <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">F12</kbd> or <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">Ctrl+Shift+K</kbd> (Windows/Linux) or <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">Cmd+Option+K</kbd> (Mac)</li>
-                      <li><strong>Safari:</strong> Enable "Show Develop menu" in Preferences, then press <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">Cmd+Option+C</kbd></li>
+                      <li>
+                        <strong>Chrome/Edge:</strong> Press{' '}
+                        <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">F12</kbd> or{' '}
+                        <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">Ctrl+Shift+I</kbd>{' '}
+                        (Windows/Linux) or{' '}
+                        <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">Cmd+Option+I</kbd>{' '}
+                        (Mac)
+                      </li>
+                      <li>
+                        <strong>Firefox:</strong> Press{' '}
+                        <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">F12</kbd> or{' '}
+                        <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">Ctrl+Shift+K</kbd>{' '}
+                        (Windows/Linux) or{' '}
+                        <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">Cmd+Option+K</kbd>{' '}
+                        (Mac)
+                      </li>
+                      <li>
+                        <strong>Safari:</strong> Enable "Show Develop menu" in Preferences, then
+                        press{' '}
+                        <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">Cmd+Option+C</kbd>
+                      </li>
                     </ul>
                   </div>
                 </li>
                 <li>
-                  <strong>Run the command:</strong> In the console, you'll see a prompt where you can type commands. Copy and paste the following command exactly as shown:
+                  <strong>Run the command:</strong> In the console, you'll see a prompt where you
+                  can type commands. Copy and paste the following command exactly as shown:
                   <div className="mt-2 p-3 bg-muted rounded-md">
-                    <code className="text-sm">JSON.parse(localStorage.getItem("profile")).auth.key</code>
+                    <code className="text-sm">
+                      JSON.parse(localStorage.getItem("profile")).auth.key
+                    </code>
                   </div>
-                  Press <kbd className="bg-background border px-1.5 py-0.5 rounded text-xs">Enter</kbd> to execute the command.
+                  Press{' '}
+                  <kbd className="bg-background border px-1.5 py-0.5 rounded text-xs">Enter</kbd> to
+                  execute the command.
                 </li>
                 <li>
-                  <strong>Copy your AuthKey:</strong> The console will display your AuthKey as a string of characters (it will look something like a long alphanumeric code). Select and copy this entire value. Be careful to copy the complete key - it should be quite long.
+                  <strong>Copy your AuthKey:</strong> The console will display your AuthKey as a
+                  string of characters (it will look something like a long alphanumeric code).
+                  Select and copy this entire value. Be careful to copy the complete key - it should
+                  be quite long.
                 </li>
                 <li>
-                  <strong>Paste into the AuthKey field:</strong> Return to this application, click "Add Account", select the "Auth Key" option, and paste the copied value into the AuthKey field.
+                  <strong>Paste into the AuthKey field:</strong> Return to this application, click
+                  "Add Account", select the "Auth Key" option, and paste the copied value into the
+                  AuthKey field.
                 </li>
               </ol>
               <p className="pt-2">
-                <strong>Note:</strong> Your AuthKey is sensitive information that provides access to your Stremio account. Keep it secure and never share it with others. This tool stores your AuthKey encrypted in your browser's local storage for your convenience.
+                <strong>Note:</strong> Your AuthKey is sensitive information that provides access to
+                your Stremio account. Keep it secure and never share it with others. This tool
+                stores your AuthKey encrypted in your browser's local storage for your convenience.
               </p>
             </div>
           </CardContent>
@@ -183,11 +304,11 @@ export function FAQPage() {
           <CardContent>
             <div className="space-y-3 text-muted-foreground">
               <p>
-                The import/export feature allows you to save and restore your account configurations and saved addons. When you export, you'll receive a JSON file containing all your data.
+                The import/export feature allows you to save and restore your account configurations
+                and saved addons. When you export, you'll receive a JSON file containing all your
+                data.
               </p>
-              <p>
-                You can use this file to:
-              </p>
+              <p>You can use this file to:</p>
               <ul className="list-disc list-inside space-y-1 ml-2">
                 <li>Backup your configurations before making changes</li>
                 <li>Transfer your setup to another browser or device</li>
@@ -199,7 +320,6 @@ export function FAQPage() {
             </div>
           </CardContent>
         </Card>
-
       </div>
     </div>
   )
