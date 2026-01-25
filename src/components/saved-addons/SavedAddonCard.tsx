@@ -226,7 +226,7 @@ export function SavedAddonCard({ savedAddon, latestVersion, onUpdate }: SavedAdd
                 className="w-full mt-2"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${updating ? 'animate-spin' : ''}`} />
-                {updating ? 'Updating...' : 'Update Available'}
+                {updating ? 'Updating...' : 'Update Addon'}
               </Button>
             )}
           </div>

@@ -231,7 +231,7 @@ export function AddonCard({
               className="w-full"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${updating ? 'animate-spin' : ''}`} />
-              {updating ? 'Updating...' : hasUpdate ? 'Update Available' : 'Reinstall'}
+              {updating ? 'Updating...' : hasUpdate ? 'Update Addon' : 'Reinstall'}
             </Button>
           )}
           {!isProtected && (
