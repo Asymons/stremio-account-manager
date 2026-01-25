@@ -56,8 +56,8 @@ export async function fetchAddonManifest(url: string): Promise<AddonDescriptor> 
 }
 
 /**
- * Reinstall an addon by re-fetching its manifest from the same URL.
- * Preserves the addon's position in the list.
+ * Reinstall an addon by removing and re-installing it with Stremio.
+ * This triggers Stremio to fetch the latest manifest from the addon URL.
  */
 export async function reinstallAddon(
   authKey: string,
@@ -70,13 +70,11 @@ export async function reinstallAddon(
 }> {
   const currentAddons = await getAddons(authKey)
 
-  const addonIndex = currentAddons.findIndex((addon) => addon.manifest.id === addonId)
+  const existingAddon = currentAddons.find((addon) => addon.manifest.id === addonId)
 
-  if (addonIndex < 0) {
+  if (!existingAddon) {
     return { addons: currentAddons, updatedAddon: null }
   }
-
-  const existingAddon = currentAddons[addonIndex]
 
   // Skip protected addons
   if (existingAddon.flags?.protected) {
@@ -84,21 +82,44 @@ export async function reinstallAddon(
   }
 
   const previousVersion = existingAddon.manifest.version
+  const transportUrl = existingAddon.transportUrl
+  const addonIndex = currentAddons.findIndex((addon) => addon.manifest.id === addonId)
 
-  // Fetch fresh manifest from the same URL
-  const freshAddon = await stremioClient.fetchAddonManifest(existingAddon.transportUrl)
+  // Remove the addon first
+  await removeAddon(authKey, addonId)
 
-  // Replace at same index to preserve ordering
-  const updatedAddons = [...currentAddons]
-  updatedAddons[addonIndex] = freshAddon
+  // Re-install it (which will use installAddon's standard flow)
+  const addonsAfterInstall = await installAddon(authKey, transportUrl)
 
-  await updateAddons(authKey, updatedAddons)
+  // Find the reinstalled addon to get its new version
+  const reinstalledAddon = addonsAfterInstall.find((addon) => addon.manifest.id === addonId)
+
+  // If we need to preserve position, reorder the addons
+  if (reinstalledAddon && addonIndex >= 0 && addonIndex < addonsAfterInstall.length - 1) {
+    const addonsWithoutReinstalled = addonsAfterInstall.filter(
+      (addon) => addon.manifest.id !== addonId
+    )
+    const reorderedAddons = [...addonsWithoutReinstalled]
+    reorderedAddons.splice(addonIndex, 0, reinstalledAddon)
+    await updateAddons(authKey, reorderedAddons)
+
+    // Refetch to get what Stremio actually has
+    const finalAddons = await getAddons(authKey)
+    const finalAddon = finalAddons.find((addon) => addon.manifest.id === addonId)
+
+    return {
+      addons: finalAddons,
+      updatedAddon: finalAddon || null,
+      previousVersion,
+      newVersion: finalAddon?.manifest.version,
+    }
+  }
 
   return {
-    addons: updatedAddons,
-    updatedAddon: freshAddon,
+    addons: addonsAfterInstall,
+    updatedAddon: reinstalledAddon || null,
     previousVersion,
-    newVersion: freshAddon.manifest.version,
+    newVersion: reinstalledAddon?.manifest.version,
   }
 }
 
