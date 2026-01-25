@@ -1,14 +1,20 @@
+import { checkAddonUpdates, reinstallAddon } from '@/api/addons'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useAddons } from '@/hooks/useAddons'
+import { decrypt } from '@/lib/crypto'
+import { maskEmail } from '@/lib/utils'
+import { useAccountStore } from '@/store/accountStore'
+import { useAddonStore } from '@/store/addonStore'
+import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
+import { ArrowLeft, GripVertical, Library, RefreshCw } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AddonCard } from './AddonCard'
 import { AddonReorderDialog } from './AddonReorderDialog'
 import { InstallSavedAddonDialog } from './InstallSavedAddonDialog'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, GripVertical, Library } from 'lucide-react'
-import { useState } from 'react'
-import { maskEmail } from '@/lib/utils'
 
 interface AddonListProps {
   accountId: string
@@ -21,9 +27,103 @@ export function AddonList({ accountId }: AddonListProps) {
   const openAddAddonDialog = useUIStore((state) => state.openAddAddonDialog)
   const [reorderDialogOpen, setReorderDialogOpen] = useState(false)
   const [installFromLibraryOpen, setInstallFromLibraryOpen] = useState(false)
+  const [checkingUpdates, setCheckingUpdates] = useState(false)
+  const latestVersions = useAddonStore((state) => state.latestVersions)
+  const updateLatestVersions = useAccountStore((state) => state.updateLatestVersions)
+  const [updatingAll, setUpdatingAll] = useState(false)
+  const encryptionKey = useAuthStore((state) => state.encryptionKey)
+  const syncAccount = useAccountStore((state) => state.syncAccount)
+  const { toast } = useToast()
 
   const account = accounts.find((acc) => acc.id === accountId)
   const isPrivacyModeEnabled = useUIStore((state) => state.isPrivacyModeEnabled)
+
+  const updatesAvailable = addons.filter((addon) => {
+    const latest = latestVersions[addon.manifest.id]
+    return latest && latest !== addon.manifest.version
+  })
+
+  const handleCheckUpdates = useCallback(async () => {
+    if (!account || !encryptionKey) return
+
+    setCheckingUpdates(true)
+    try {
+      const updateInfoList = await checkAddonUpdates(addons)
+      const versions: Record<string, string> = {}
+      updateInfoList.forEach((info) => {
+        versions[info.addonId] = info.latestVersion
+      })
+      updateLatestVersions(versions)
+
+      const updatesCount = updateInfoList.filter((info) => info.hasUpdate).length
+      toast({
+        title: 'Update Check Complete',
+        description:
+          updatesCount > 0
+            ? `${updatesCount} addon${updatesCount !== 1 ? 's have' : ' has'} updates available`
+            : 'All addons are up to date',
+      })
+    } catch (error) {
+      toast({
+        title: 'Check Failed',
+        description: 'Failed to check for updates',
+        variant: 'destructive',
+      })
+    } finally {
+      setCheckingUpdates(false)
+    }
+  }, [account, encryptionKey, addons, toast, updateLatestVersions])
+
+  const handleUpdateAddon = useCallback(
+    async (_accountId: string, addonId: string) => {
+      if (!account || !encryptionKey) return
+
+      const authKey = await decrypt(account.authKey, encryptionKey)
+      await reinstallAddon(authKey, addonId)
+
+      // Sync account to refresh addon list
+      await syncAccount(accountId)
+    },
+    [account, encryptionKey, accountId, syncAccount]
+  )
+
+  const handleUpdateAll = useCallback(async () => {
+    if (!account || !encryptionKey) return
+
+    const addonsToUpdate = updatesAvailable.map((addon) => addon.manifest.id)
+    if (addonsToUpdate.length === 0) return
+
+    setUpdatingAll(true)
+    try {
+      const authKey = await decrypt(account.authKey, encryptionKey)
+
+      let successCount = 0
+      for (const addonId of addonsToUpdate) {
+        try {
+          await reinstallAddon(authKey, addonId)
+          successCount++
+        } catch (error) {
+          console.warn(`Failed to update addon ${addonId}:`, error)
+        }
+      }
+
+      // Sync account to refresh addon list
+      await syncAccount(accountId)
+
+      toast({
+        title: 'Updates Complete',
+        description: `Successfully updated ${successCount} of ${addonsToUpdate.length} addons`,
+      })
+    } catch (error) {
+      toast({
+        title: 'Update Failed',
+        description: 'Failed to update addons',
+        variant: 'destructive',
+      })
+    } finally {
+      setUpdatingAll(false)
+    }
+  }, [account, encryptionKey, updatesAvailable, accountId, syncAccount, toast])
 
   if (!account) {
     return (
@@ -60,10 +160,45 @@ export function AddonList({ accountId }: AddonListProps) {
             <h2 className="text-xl md:text-2xl font-bold truncate">{displayName}</h2>
             <p className="text-xs md:text-sm text-muted-foreground">
               {addons.length} addon{addons.length !== 1 ? 's' : ''} installed
+              {updatesAvailable.length > 0 && (
+                <span className="ml-2 text-blue-600 dark:text-blue-400">
+                  ({updatesAvailable.length} update{updatesAvailable.length !== 1 ? 's' : ''}{' '}
+                  available)
+                </span>
+              )}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button
+            onClick={handleCheckUpdates}
+            disabled={addons.length === 0 || checkingUpdates}
+            variant="outline"
+            size="sm"
+            className="flex-1 sm:flex-none"
+          >
+            <RefreshCw className={`h-4 w-4 ${checkingUpdates ? 'animate-spin' : ''}`} />
+            <span className="hidden xs:inline">
+              {checkingUpdates ? 'Checking...' : 'Check Updates'}
+            </span>
+            <span className="inline xs:hidden">{checkingUpdates ? '...' : 'Updates'}</span>
+          </Button>
+          {updatesAvailable.length > 0 && (
+            <Button
+              onClick={handleUpdateAll}
+              disabled={updatingAll}
+              size="sm"
+              className="flex-1 sm:flex-none"
+            >
+              <RefreshCw className={`h-4 w-4 ${updatingAll ? 'animate-spin' : ''}`} />
+              <span className="hidden xs:inline">
+                {updatingAll ? 'Updating...' : `Update All (${updatesAvailable.length})`}
+              </span>
+              <span className="inline xs:hidden">
+                {updatingAll ? '...' : `All (${updatesAvailable.length})`}
+              </span>
+            </Button>
+          )}
           <Button
             onClick={() => setReorderDialogOpen(true)}
             disabled={addons.length === 0}
@@ -109,6 +244,8 @@ export function AddonList({ accountId }: AddonListProps) {
               addon={addon}
               accountId={accountId}
               onRemove={removeAddon}
+              onUpdate={handleUpdateAddon}
+              latestVersion={latestVersions[addon.manifest.id]}
               loading={loading}
             />
           ))}

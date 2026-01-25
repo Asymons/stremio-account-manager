@@ -18,26 +18,36 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useToast } from '@/hooks/use-toast'
+import { getStremioLink, maskUrl } from '@/lib/utils'
 import { useAddonStore } from '@/store/addonStore'
 import { useUIStore } from '@/store/uiStore'
 import { AddonDescriptor } from '@/types/addon'
+import { Copy, ExternalLink, RefreshCw } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Copy, ExternalLink } from 'lucide-react'
-import { maskUrl, getStremioLink } from '@/lib/utils'
-import { useToast } from '@/hooks/use-toast'
 
 interface AddonCardProps {
   addon: AddonDescriptor
   accountId: string
   onRemove: (accountId: string, addonId: string) => void
+  onUpdate?: (accountId: string, addonId: string) => Promise<void>
+  latestVersion?: string
   loading?: boolean
 }
 
-export function AddonCard({ addon, accountId, onRemove, loading }: AddonCardProps) {
+export function AddonCard({
+  addon,
+  accountId,
+  onRemove,
+  onUpdate,
+  latestVersion,
+  loading,
+}: AddonCardProps) {
   const { library, createSavedAddon, loading: storeLoading } = useAddonStore()
   const isPrivacyModeEnabled = useUIStore((state) => state.isPrivacyModeEnabled)
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
+  const [updating, setUpdating] = useState(false)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showRemoveDialog, setShowRemoveDialog] = useState(false)
   const [saveName, setSaveName] = useState('')
@@ -64,6 +74,9 @@ export function AddonCard({ addon, accountId, onRemove, loading }: AddonCardProp
   }, [library, addon.manifest.id, addon.transportUrl])
 
   const canSaveToLibrary = !addon.flags?.protected && !addon.flags?.official && !isInLibrary
+
+  const hasUpdate = latestVersion ? latestVersion !== addon.manifest.version : false
+  const canUpdate = !addon.flags?.protected && onUpdate
 
   const openSaveModal = () => {
     setSaveName(addon.manifest.name)
@@ -114,6 +127,26 @@ export function AddonCard({ addon, accountId, onRemove, loading }: AddonCardProp
     window.location.href = getStremioLink(addon.transportUrl)
   }
 
+  const handleUpdate = async () => {
+    if (!onUpdate) return
+    setUpdating(true)
+    try {
+      await onUpdate(accountId, addon.manifest.id)
+      toast({
+        title: 'Addon Updated',
+        description: `Successfully updated ${addon.manifest.name}`,
+      })
+    } catch (error) {
+      toast({
+        title: 'Update Failed',
+        description: error instanceof Error ? error.message : 'Failed to update addon',
+        variant: 'destructive',
+      })
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   return (
     <>
       <Card className="flex flex-col">
@@ -140,7 +173,14 @@ export function AddonCard({ addon, accountId, onRemove, loading }: AddonCardProp
                   </span>
                 )}
               </CardTitle>
-              <CardDescription className="text-xs">v{addon.manifest.version}</CardDescription>
+              <CardDescription className="text-xs flex items-center gap-2">
+                v{addon.manifest.version}
+                {hasUpdate && latestVersion && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                    → v{latestVersion}
+                  </span>
+                )}
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -180,6 +220,18 @@ export function AddonCard({ addon, accountId, onRemove, loading }: AddonCardProp
               className="w-full"
             >
               Save to Library
+            </Button>
+          )}
+          {canUpdate && (
+            <Button
+              variant={hasUpdate ? 'default' : 'secondary'}
+              size="sm"
+              onClick={handleUpdate}
+              disabled={loading || updating}
+              className="w-full"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${updating ? 'animate-spin' : ''}`} />
+              {updating ? 'Updating...' : hasUpdate ? 'Update Available' : 'Reinstall'}
             </Button>
           )}
           {!isProtected && (

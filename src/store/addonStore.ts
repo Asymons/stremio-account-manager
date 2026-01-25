@@ -1,4 +1,5 @@
-import { getAddons, updateAddons } from '@/api/addons'
+import { getAddons, reinstallAddon as reinstallAddonApi, updateAddons } from '@/api/addons'
+import { checkAllAddonsHealth } from '@/lib/addon-health'
 import { mergeAddons, removeAddons } from '@/lib/addon-merger'
 import {
   findSavedAddonByUrl,
@@ -8,7 +9,6 @@ import {
   saveAddonLibrary,
 } from '@/lib/addon-storage'
 import { normalizeTagName } from '@/lib/addon-validator'
-import { checkAllAddonsHealth } from '@/lib/addon-health'
 import { decrypt } from '@/lib/crypto'
 import { useAuthStore } from '@/store/authStore'
 import { AddonManifest } from '@/types/addon'
@@ -21,6 +21,7 @@ import {
   SavedAddon,
 } from '@/types/saved-addon'
 import { create } from 'zustand'
+import localforage from 'localforage'
 
 // Helper function to get encryption key from auth store
 const getEncryptionKey = () => {
@@ -32,6 +33,7 @@ const getEncryptionKey = () => {
 interface AddonStore {
   // State
   library: Record<string, SavedAddon>
+  latestVersions: Record<string, string>
   accountStates: Record<string, AccountAddonState>
   loading: boolean
   error: string | null
@@ -39,6 +41,10 @@ interface AddonStore {
 
   // Initialization
   initialize: () => Promise<void>
+
+  // === Update Management ===
+  updateLatestVersions: (versions: Record<string, string>) => void
+  getLatestVersion: (manifestId: string) => string | undefined
 
   // === Saved Addon Management ===
   createSavedAddon: (
@@ -51,6 +57,7 @@ interface AddonStore {
     id: string,
     updates: Partial<Pick<SavedAddon, 'name' | 'tags' | 'installUrl'>>
   ) => Promise<void>
+  updateSavedAddonManifest: (id: string) => Promise<void>
   deleteSavedAddon: (id: string) => Promise<void>
   getSavedAddon: (id: string) => SavedAddon | null
 
@@ -104,6 +111,10 @@ interface AddonStore {
     tag: string,
     accountIds: Array<{ id: string; authKey: string }>
   ) => Promise<BulkResult>
+  bulkReinstallAddons: (
+    addonIds: string[],
+    accountIds: Array<{ id: string; authKey: string }>
+  ) => Promise<BulkResult>
 
   // === Sync ===
   syncAccountState: (accountId: string, accountAuthKey: string) => Promise<void>
@@ -122,6 +133,7 @@ interface AddonStore {
 
 export const useAddonStore = create<AddonStore>((set, get) => ({
   library: {},
+  latestVersions: {},
   accountStates: {},
   loading: false,
   error: null,
@@ -129,16 +141,31 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
   initialize: async () => {
     try {
-      const [library, accountStates] = await Promise.all([
+      const [library, accountStates, latestVersions] = await Promise.all([
         loadAddonLibrary(),
         loadAccountAddonStates(),
+        localforage.getItem<Record<string, string>>('stremio-manager:latest-versions'),
       ])
 
-      set({ library, accountStates })
+      set({
+        library,
+        accountStates,
+        latestVersions: latestVersions || {},
+      })
     } catch (error) {
       console.error('Failed to initialize addon store:', error)
       set({ error: 'Failed to load addon data' })
     }
+  },
+
+  updateLatestVersions: (versions) => {
+    const newVersions = { ...get().latestVersions, ...versions }
+    set({ latestVersions: newVersions })
+    localforage.setItem('stremio-manager:latest-versions', newVersions).catch(console.error)
+  },
+
+  getLatestVersion: (manifestId) => {
+    return get().latestVersions[manifestId]
   },
 
   // === Saved Addon Management ===
@@ -146,18 +173,24 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
   createSavedAddon: async (name, installUrl, tags = [], existingManifest) => {
     set({ loading: true, error: null })
     try {
-      if (!existingManifest) {
-        throw new Error('Existing manifest is required to create a saved addon')
-      }
+      let manifest = existingManifest
 
-      const manifest = existingManifest
+      // If no manifest provided, fetch it from the URL
+      if (!manifest) {
+        const { fetchAddonManifest } = await import('@/api/addons')
+        const addonDescriptor = await fetchAddonManifest(installUrl)
+        manifest = addonDescriptor.manifest
+      }
 
       // Normalize tags
       const normalizedTags = tags.map(normalizeTagName).filter(Boolean)
 
+      // Use provided name or fall back to manifest name
+      const addonName = name.trim() || manifest.name
+
       const savedAddon: SavedAddon = {
         id: crypto.randomUUID(),
-        name: name.trim(),
+        name: addonName,
         installUrl,
         manifest,
         tags: normalizedTags,
@@ -211,6 +244,48 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
     } finally {
       set({ loading: false })
     }
+  },
+
+  updateSavedAddonManifest: async (id) => {
+    const savedAddon = get().library[id]
+    if (!savedAddon) {
+      throw new Error('Saved addon not found')
+    }
+
+    // Capture previous version for logging
+    const previousVersion = savedAddon.manifest.version
+
+    // Fetch fresh manifest from the install URL
+    const { fetchAddonManifest } = await import('@/api/addons')
+    const addonDescriptor = await fetchAddonManifest(savedAddon.installUrl)
+    const freshManifest = addonDescriptor.manifest
+
+    // Verify manifest ID matches (prevent replacing with wrong addon)
+    if (freshManifest.id !== savedAddon.manifest.id) {
+      throw new Error('Addon ID mismatch - this may be a different addon')
+    }
+
+    // Update the saved addon with fresh manifest
+    const updatedSavedAddon = {
+      ...savedAddon,
+      manifest: freshManifest,
+      updatedAt: new Date(),
+    }
+
+    const library = { ...get().library, [id]: updatedSavedAddon }
+    set({ library })
+
+    await saveAddonLibrary(library)
+
+    // Update latestVersions to clear the update badge
+    const latestVersions = { ...get().latestVersions }
+    latestVersions[freshManifest.id] = freshManifest.version
+    set({ latestVersions })
+    localforage.setItem('stremio-manager:latest-versions', latestVersions).catch(console.error)
+
+    console.log(
+      `Updated saved addon "${savedAddon.name}" from v${previousVersion} to v${freshManifest.version}`
+    )
   },
 
   deleteSavedAddon: async (id) => {
@@ -513,6 +588,81 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
     const addonIds = savedAddons.map((s) => s.manifest.id)
     return get().bulkRemoveAddons(addonIds, accountIds)
+  },
+
+  bulkReinstallAddons: async (addonIds, accountIds) => {
+    set({ loading: true, error: null })
+    try {
+      const result: BulkResult = {
+        success: 0,
+        failed: 0,
+        errors: [],
+        details: [],
+      }
+
+      for (const { id: accountId, authKey: accountAuthKey } of accountIds) {
+        try {
+          const authKey = await decrypt(accountAuthKey, getEncryptionKey())
+
+          // Reinstall each addon in place to preserve ordering
+          const updateResults: Array<{
+            addonId: string
+            previousVersion?: string
+            newVersion?: string
+          }> = []
+
+          for (const addonId of addonIds) {
+            try {
+              const reinstallResult = await reinstallAddonApi(authKey, addonId)
+              if (reinstallResult.updatedAddon) {
+                updateResults.push({
+                  addonId,
+                  previousVersion: reinstallResult.previousVersion,
+                  newVersion: reinstallResult.newVersion,
+                })
+              }
+            } catch (error) {
+              // Log but continue with other addons
+              console.warn(`Failed to reinstall addon ${addonId} on account ${accountId}:`, error)
+            }
+          }
+
+          result.success++
+          result.details.push({
+            accountId,
+            result: {
+              added: [],
+              updated: updateResults.map((r) => ({
+                addonId: r.addonId,
+                oldUrl: '',
+                newUrl: '',
+                previousVersion: r.previousVersion,
+                newVersion: r.newVersion,
+              })),
+              skipped: [],
+              protected: [],
+            },
+          })
+
+          // Sync account state
+          await get().syncAccountState(accountId, accountAuthKey)
+        } catch (error) {
+          result.failed++
+          result.errors.push({
+            accountId,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          })
+        }
+      }
+
+      return result
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to reinstall addons'
+      set({ error: message })
+      throw error
+    } finally {
+      set({ loading: false })
+    }
   },
 
   // === Sync ===

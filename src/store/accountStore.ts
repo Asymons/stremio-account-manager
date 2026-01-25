@@ -42,6 +42,7 @@ interface AccountStore {
 
   // Actions
   initialize: () => Promise<void>
+  updateLatestVersions: (versions: Record<string, string>) => void
   addAccountByAuthKey: (authKey: string, name: string) => Promise<void>
   addAccountByCredentials: (email: string, password: string, name: string) => Promise<void>
   removeAccount: (id: string) => Promise<void>
@@ -67,6 +68,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
   initialize: async () => {
     try {
       const storedAccounts = await localforage.getItem<StremioAccount[]>(STORAGE_KEY)
+
       if (storedAccounts && Array.isArray(storedAccounts)) {
         // Convert date strings back to Date objects
         const accounts = storedAccounts.map((acc) => ({
@@ -79,6 +81,13 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       console.error('Failed to load accounts from storage:', error)
       set({ error: 'Failed to load saved accounts' })
     }
+  },
+
+  updateLatestVersions: (versions) => {
+    // We use dynamic import to avoid circular dependency
+    import('@/store/addonStore').then((mod) => {
+      mod.useAddonStore.getState().updateLatestVersions(versions)
+    })
   },
 
   addAccountByAuthKey: async (authKey, name) => {

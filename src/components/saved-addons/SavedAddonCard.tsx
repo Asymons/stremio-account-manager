@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -8,26 +9,30 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useToast } from '@/hooks/use-toast'
+import { getStremioLink, maskUrl } from '@/lib/utils'
 import { useAddonStore } from '@/store/addonStore'
+import { useUIStore } from '@/store/uiStore'
 import { SavedAddon } from '@/types/saved-addon'
-import { Copy, ExternalLink, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Copy, ExternalLink, MoreVertical, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { SavedAddonDetails } from './SavedAddonDetails'
-import { useUIStore } from '@/store/uiStore'
-import { useToast } from '@/hooks/use-toast'
-import { maskUrl, getStremioLink } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 
 interface SavedAddonCardProps {
   savedAddon: SavedAddon
+  latestVersion?: string
+  onUpdate?: (savedAddonId: string, addonName: string) => Promise<void>
 }
 
-export function SavedAddonCard({ savedAddon }: SavedAddonCardProps) {
+export function SavedAddonCard({ savedAddon, latestVersion, onUpdate }: SavedAddonCardProps) {
   const { deleteSavedAddon } = useAddonStore()
   const isPrivacyModeEnabled = useUIStore((state) => state.isPrivacyModeEnabled)
   const { toast } = useToast()
   const [showDetails, setShowDetails] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [updating, setUpdating] = useState(false)
+
+  const hasUpdate = latestVersion ? latestVersion !== savedAddon.manifest.version : false
 
   const handleDelete = () => {
     setShowDeleteDialog(true)
@@ -88,6 +93,16 @@ export function SavedAddonCard({ savedAddon }: SavedAddonCardProps) {
     return `${days}d ago`
   }
 
+  const handleUpdate = async () => {
+    if (!onUpdate) return
+    setUpdating(true)
+    try {
+      await onUpdate(savedAddon.id, savedAddon.name)
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   return (
     <>
       <Card className="flex flex-col">
@@ -99,6 +114,11 @@ export function SavedAddonCard({ savedAddon }: SavedAddonCardProps) {
                 title={getHealthTooltip()}
               />
               <CardTitle className="text-lg line-clamp-2">{savedAddon.name}</CardTitle>
+              {hasUpdate && (
+                <span className="text-xs px-2 py-1 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 shrink-0">
+                  Update
+                </span>
+              )}
               {savedAddon.sourceType === 'cloned-from-account' && (
                 <span className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary shrink-0">
                   Cloned
@@ -144,7 +164,12 @@ export function SavedAddonCard({ savedAddon }: SavedAddonCardProps) {
               )}
               <div className="text-sm min-w-0">
                 <p className="font-medium truncate">{savedAddon.manifest.name}</p>
-                <p className="text-xs text-muted-foreground">v{savedAddon.manifest.version}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  v{savedAddon.manifest.version}
+                  {hasUpdate && latestVersion && (
+                    <span className="text-blue-600 dark:text-blue-400">→ v{latestVersion}</span>
+                  )}
+                </p>
               </div>
             </div>
 
@@ -190,6 +215,20 @@ export function SavedAddonCard({ savedAddon }: SavedAddonCardProps) {
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </div>
+
+            {/* Update Button */}
+            {hasUpdate && onUpdate && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleUpdate}
+                disabled={updating}
+                className="w-full mt-2"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${updating ? 'animate-spin' : ''}`} />
+                {updating ? 'Updating...' : 'Update Available'}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

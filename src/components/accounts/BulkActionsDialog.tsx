@@ -17,7 +17,12 @@ interface BulkActionsDialogProps {
   onClose: () => void
 }
 
-type BulkAction = 'add-saved-addons' | 'add-by-tag' | 'remove-addons' | 'remove-by-tag'
+type BulkAction =
+  | 'add-saved-addons'
+  | 'add-by-tag'
+  | 'remove-addons'
+  | 'remove-by-tag'
+  | 'update-addons'
 
 export function BulkActionsDialog({ selectedAccounts, onClose }: BulkActionsDialogProps) {
   const {
@@ -27,6 +32,7 @@ export function BulkActionsDialog({ selectedAccounts, onClose }: BulkActionsDial
     bulkApplyTag,
     bulkRemoveAddons,
     bulkRemoveByTag,
+    bulkReinstallAddons,
     loading,
   } = useAddonStore()
 
@@ -35,6 +41,7 @@ export function BulkActionsDialog({ selectedAccounts, onClose }: BulkActionsDial
   const [selectedSavedAddonIds, setSelectedSavedAddonIds] = useState<Set<string>>(new Set())
   const [selectedTag, setSelectedTag] = useState<string>('')
   const [selectedAddonIds, setSelectedAddonIds] = useState<Set<string>>(new Set())
+  const [selectedUpdateAddonIds, setSelectedUpdateAddonIds] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [result, setResult] = useState<BulkResult | null>(null)
@@ -132,6 +139,14 @@ export function BulkActionsDialog({ selectedAccounts, onClose }: BulkActionsDial
           }
           bulkResult = await bulkRemoveByTag(selectedTag, accountsData)
           break
+
+        case 'update-addons':
+          if (selectedUpdateAddonIds.size === 0) {
+            setError('Please select at least one addon to update')
+            return
+          }
+          bulkResult = await bulkReinstallAddons(Array.from(selectedUpdateAddonIds), accountsData)
+          break
       }
 
       setResult(bulkResult)
@@ -186,6 +201,7 @@ export function BulkActionsDialog({ selectedAccounts, onClose }: BulkActionsDial
             <SelectItem value="add-by-tag">Add Addons by Tag</SelectItem>
             <SelectItem value="remove-addons">Remove Addon(s)</SelectItem>
             <SelectItem value="remove-by-tag">Remove Addons by Tag</SelectItem>
+            <SelectItem value="update-addons">Update Addon(s)</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -381,6 +397,57 @@ export function BulkActionsDialog({ selectedAccounts, onClose }: BulkActionsDial
               No saved addons found with this tag. This action will have no effect.
             </p>
           )}
+        </div>
+      )}
+
+      {/* Update Addons */}
+      {action === 'update-addons' && (
+        <div className="space-y-2">
+          <Label>Select Addons to Update ({selectedUpdateAddonIds.size} selected)</Label>
+          <p className="text-xs text-muted-foreground">
+            Re-install selected addons to get the latest version from their source URL. Addon
+            positions will be preserved.
+          </p>
+          <div className="border rounded-md max-h-64 overflow-y-auto">
+            {allAddons.length === 0 ? (
+              <p className="text-sm text-muted-foreground p-4 text-center">No addons available</p>
+            ) : (
+              <div className="divide-y">
+                {allAddons.map((addon) => (
+                  <label
+                    key={addon.manifest.id}
+                    className="flex items-center gap-3 p-3 hover:bg-accent/50 dark:hover:bg-accent/30 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedUpdateAddonIds.has(addon.manifest.id)}
+                      onChange={() => {
+                        setSelectedUpdateAddonIds((prev) => {
+                          const newSet = new Set(prev)
+                          if (newSet.has(addon.manifest.id)) {
+                            newSet.delete(addon.manifest.id)
+                          } else {
+                            newSet.add(addon.manifest.id)
+                          }
+                          return newSet
+                        })
+                      }}
+                      disabled={addon.flags?.protected}
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">
+                        {addon.manifest.name}
+                        {addon.flags?.protected && (
+                          <span className="ml-2 text-xs text-yellow-600">(Protected)</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">v{addon.manifest.version}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -1,5 +1,5 @@
-import axios, { AxiosInstance } from 'axios'
 import { AddonDescriptor } from '@/types/addon'
+import axios, { AxiosInstance } from 'axios'
 
 // API endpoint - we'll test CORS first, may need to use a proxy
 const API_BASE = 'https://api.strem.io'
@@ -138,35 +138,84 @@ export class StremioClient {
 
   /**
    * Fetch addon manifest from URL
+   * Uses CORS proxy to avoid cross-origin issues with addon servers
    */
-  async fetchAddonManifest(transportUrl: string): Promise<AddonDescriptor> {
-    try {
-      // Addon manifest is at /manifest.json
-      const manifestUrl = new URL('/manifest.json', transportUrl).toString()
-      const response = await axios.get(manifestUrl, {
-        timeout: 10000,
-      })
+  async fetchAddonManifest(transportUrl: string, retries = 2): Promise<AddonDescriptor> {
+    // Determine the manifest URL
+    let manifestUrl: string
+    if (transportUrl.endsWith('/manifest.json') || transportUrl.includes('/manifest.json?')) {
+      manifestUrl = transportUrl
+    } else {
+      // Try to append /manifest.json
+      manifestUrl = transportUrl.endsWith('/')
+        ? `${transportUrl}manifest.json`
+        : `${transportUrl}/manifest.json`
+    }
 
-      if (!response.data?.id || !response.data?.name || !response.data?.version) {
-        throw new Error('Invalid addon manifest - missing required fields')
-      }
+    // Use allorigins proxy to avoid CORS issues
+    // Add a unique timestamp to bypass both browser and proxy caches without triggering CORS preflights
+    const cacheBuster = `cb=${Date.now()}`
+    const separator = manifestUrl.includes('?') ? '&' : '?'
+    const finalManifestUrl = `${manifestUrl}${separator}${cacheBuster}`
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(finalManifestUrl)}`
 
-      return {
-        transportUrl,
-        manifest: response.data,
-      }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (error.code === 'ERR_NETWORK') {
-          throw new Error('Cannot reach addon URL - check the URL and your internet connection')
+    let lastError: unknown
+    for (let i = 0; i <= retries; i++) {
+      try {
+        if (i > 0) {
+          console.log(`[Manifest Fetch] Retrying (${i}/${retries}) for: ${manifestUrl}`)
+          // Small delay before retry
+          await new Promise((resolve) => setTimeout(resolve, 1000 * i))
+        } else {
+          console.log(`[Manifest Fetch] Fetching via proxy: ${manifestUrl}`)
         }
-        if (error.response?.status === 404) {
+
+        const response = await axios.get(proxyUrl, {
+          timeout: 5000,
+        })
+
+        // allorigins might return the data as a string, so parse it if needed
+        let manifestData = response.data
+        if (typeof manifestData === 'string') {
+          try {
+            manifestData = JSON.parse(manifestData)
+          } catch {
+            console.error(
+              `[Manifest Fetch] Failed to parse JSON for ${manifestUrl}:`,
+              response.data
+            )
+            throw new Error('Invalid addon manifest - could not parse JSON')
+          }
+        }
+
+        if (!manifestData?.id || !manifestData?.name || !manifestData?.version) {
+          console.error(`[Manifest Fetch] Missing fields for ${manifestUrl}:`, manifestData)
+          throw new Error('Invalid addon manifest - missing required fields')
+        }
+
+        return {
+          transportUrl,
+          manifest: manifestData,
+        }
+      } catch (error) {
+        lastError = error
+        console.warn(
+          `[Manifest Fetch] Attempt ${i + 1} failed for ${manifestUrl}:`,
+          error instanceof Error ? error.message : error
+        )
+
+        // If it's a 404, don't retry
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
           throw new Error('Addon manifest not found at this URL')
         }
-        throw new Error(error.message || 'Failed to fetch addon manifest')
       }
-      throw error
     }
+
+    // If we're here, all retries failed
+    if (axios.isAxiosError(lastError)) {
+      throw new Error(lastError.message || 'Failed to fetch addon manifest after retries')
+    }
+    throw lastError
   }
 
   /**
