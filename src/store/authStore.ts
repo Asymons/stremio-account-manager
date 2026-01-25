@@ -13,6 +13,7 @@ import {
   clearSessionKey,
 } from '@/lib/crypto'
 import { wipeAllData } from '@/lib/storage-reset'
+import { resetAllStores } from '@/lib/store-coordinator'
 
 interface AuthStore {
   isLocked: boolean
@@ -150,6 +151,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     // Wipe all data first
     await wipeAllData()
+
+    // Reset in-memory state from all stores
+    resetAllStores()
 
     // Set up new password using existing function
     await get().setupMasterPassword(password)

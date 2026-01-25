@@ -1,4 +1,9 @@
-import { getAddons, reinstallAddon as reinstallAddonApi, updateAddons } from '@/api/addons'
+import {
+  getAddons,
+  reinstallAddon as reinstallAddonApi,
+  updateAddons,
+  fetchAddonManifest,
+} from '@/api/addons'
 import { checkAllAddonsHealth } from '@/lib/addon-health'
 import { mergeAddons, removeAddons } from '@/lib/addon-merger'
 import {
@@ -129,6 +134,7 @@ interface AddonStore {
 
   // Utility
   clearError: () => void
+  reset: () => void
 }
 
 export const useAddonStore = create<AddonStore>((set, get) => ({
@@ -177,7 +183,6 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
       // If no manifest provided, fetch it from the URL
       if (!manifest) {
-        const { fetchAddonManifest } = await import('@/api/addons')
         const addonDescriptor = await fetchAddonManifest(installUrl)
         manifest = addonDescriptor.manifest
       }
@@ -256,7 +261,6 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
     const previousVersion = savedAddon.manifest.version
 
     // Fetch fresh manifest from the install URL
-    const { fetchAddonManifest } = await import('@/api/addons')
     const addonDescriptor = await fetchAddonManifest(savedAddon.installUrl)
     const freshManifest = addonDescriptor.manifest
 
@@ -803,4 +807,15 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  reset: () => {
+    set({
+      library: {},
+      latestVersions: {},
+      accountStates: {},
+      loading: false,
+      error: null,
+      checkingHealth: false,
+    })
+  },
 }))

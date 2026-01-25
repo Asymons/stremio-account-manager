@@ -9,6 +9,7 @@ import { decrypt, encrypt } from '@/lib/crypto'
 import { useAuthStore } from '@/store/authStore'
 import { accountExportSchema } from '@/lib/validation'
 import { loadAddonLibrary, saveAddonLibrary } from '@/lib/addon-storage'
+import { updateLatestVersions as updateLatestVersionsCoordinator } from '@/lib/store-coordinator'
 import { toast } from '@/hooks/use-toast'
 import { AccountExport, StremioAccount } from '@/types/account'
 import { AddonDescriptor } from '@/types/addon'
@@ -58,6 +59,7 @@ interface AccountStore {
     data: { name: string; authKey?: string; email?: string; password?: string }
   ) => Promise<void>
   clearError: () => void
+  reset: () => void
 }
 
 export const useAccountStore = create<AccountStore>((set, get) => ({
@@ -84,10 +86,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
   },
 
   updateLatestVersions: (versions) => {
-    // We use dynamic import to avoid circular dependency
-    import('@/store/addonStore').then((mod) => {
-      mod.useAddonStore.getState().updateLatestVersions(versions)
-    })
+    updateLatestVersionsCoordinator(versions)
   },
 
   addAccountByAuthKey: async (authKey, name) => {
@@ -561,5 +560,9 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
 
   clearError: () => {
     set({ error: null })
+  },
+
+  reset: () => {
+    set({ accounts: [], loading: false, error: null })
   },
 }))

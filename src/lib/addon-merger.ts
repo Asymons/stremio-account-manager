@@ -29,16 +29,14 @@ export async function mergeAddons(
   }
 
   // Start with current addons
-  let updatedAddons = [...currentAddons]
+  const updatedAddons = [...currentAddons]
 
   for (const savedAddon of savedAddons) {
     // Use cached manifest ID to check if addon already exists
     const addonId = savedAddon.manifest.id
-    
+
     // Find existing addon with same ID
-    const existingIndex = updatedAddons.findIndex(
-      (a) => a.manifest.id === addonId
-    )
+    const existingIndex = updatedAddons.findIndex((a) => a.manifest.id === addonId)
 
     if (existingIndex >= 0) {
       const existing = updatedAddons[existingIndex]
@@ -56,7 +54,7 @@ export async function mergeAddons(
         try {
           // Fetch the latest manifest from the saved addon's URL
           const manifest = await fetchAddonManifest(savedAddon.installUrl)
-          
+
           // Replace existing addon
           const oldUrl = existing.transportUrl
           updatedAddons[existingIndex] = manifest
@@ -94,14 +92,17 @@ export async function mergeAddons(
         })
       } catch (error) {
         // If fetch fails, use cached manifest as fallback
-        console.warn(`Failed to fetch manifest for saved addon ${savedAddon.name}, using cached manifest:`, error)
-        
+        console.warn(
+          `Failed to fetch manifest for saved addon ${savedAddon.name}, using cached manifest:`,
+          error
+        )
+
         // Create AddonDescriptor from cached manifest
         const cachedManifest: AddonDescriptor = {
           transportUrl: savedAddon.installUrl,
           manifest: savedAddon.manifest,
         }
-        
+
         updatedAddons.push(cachedManifest)
 
         result.added.push({
