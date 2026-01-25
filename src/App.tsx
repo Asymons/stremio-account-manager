@@ -19,7 +19,7 @@ function App() {
   const initializeAuth = useAuthStore((state) => state.initialize)
   const initializeUI = useUIStore((state) => state.initialize)
   const isLocked = useAuthStore((state) => state.isLocked)
-  const isPasswordSet = useAuthStore((state) => state.isPasswordSet)()
+  const isPasswordSet = useAuthStore((state) => state.isPasswordSet())
   const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
