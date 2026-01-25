@@ -195,10 +195,10 @@ export function AddonList({ accountId }: AddonListProps) {
             >
               <RefreshCw className={`h-4 w-4 ${updatingAll ? 'animate-spin' : ''}`} />
               <span className="hidden xs:inline">
-                {updatingAll ? 'Updating...' : `Update (${updatesAvailable.length})`}
+                {updatingAll ? 'Updating...' : `Update all addons (${updatesAvailable.length})`}
               </span>
               <span className="inline xs:hidden">
-                {updatingAll ? '...' : `(${updatesAvailable.length})`}
+                {updatingAll ? '...' : `Update (${updatesAvailable.length})`}
               </span>
             </Button>
           )}
