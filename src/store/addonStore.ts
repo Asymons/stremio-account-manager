@@ -9,7 +9,8 @@ import {
 } from '@/lib/addon-storage'
 import { normalizeTagName, validateAddonUrl } from '@/lib/addon-validator'
 import { checkAllAddonsHealth } from '@/lib/addon-health'
-import { decrypt } from '@/lib/encryption'
+import { decrypt } from '@/lib/crypto'
+import { useAuthStore } from '@/store/authStore'
 import { AddonManifest } from '@/types/addon'
 import {
   AccountAddonState,
@@ -20,6 +21,13 @@ import {
   SavedAddon,
 } from '@/types/saved-addon'
 import { create } from 'zustand'
+
+// Helper function to get encryption key from auth store
+const getEncryptionKey = () => {
+  const key = useAuthStore.getState().encryptionKey
+  if (!key) throw new Error('App is locked')
+  return key
+}
 
 interface AddonStore {
   // State
@@ -348,7 +356,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
       }
 
       // Get current addons from account
-      const authKey = decrypt(accountAuthKey)
+      const authKey = await decrypt(accountAuthKey, getEncryptionKey())
       const currentAddons = await getAddons(authKey)
 
       // Merge the saved addon
@@ -400,7 +408,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
     set({ loading: true, error: null })
     try {
       // Get current addons from account
-      const authKey = decrypt(accountAuthKey)
+      const authKey = await decrypt(accountAuthKey, getEncryptionKey())
       const currentAddons = await getAddons(authKey)
 
       // Merge all saved addons with this tag
@@ -460,7 +468,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
       for (const { id: accountId, authKey: accountAuthKey } of accountIds) {
         try {
-          const authKey = decrypt(accountAuthKey)
+          const authKey = await decrypt(accountAuthKey, getEncryptionKey())
           const currentAddons = await getAddons(authKey)
 
           const { addons: updatedAddons, result: mergeResult } = await mergeAddons(
@@ -528,7 +536,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
       for (const { id: accountId, authKey: accountAuthKey } of accountIds) {
         try {
-          const authKey = decrypt(accountAuthKey)
+          const authKey = await decrypt(accountAuthKey, getEncryptionKey())
           const currentAddons = await getAddons(authKey)
 
           const { addons: updatedAddons, protectedAddons } = removeAddons(currentAddons, addonIds)
@@ -585,7 +593,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
   syncAccountState: async (accountId, accountAuthKey) => {
     try {
       // Get current addons from Stremio
-      const authKey = decrypt(accountAuthKey)
+      const authKey = await decrypt(accountAuthKey, getEncryptionKey())
       const currentAddons = await getAddons(authKey)
 
       // Get existing state

@@ -10,7 +10,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAccounts } from '@/hooks/useAccounts'
-import { decrypt } from '@/lib/encryption'
 import { useUIStore } from '@/store/uiStore'
 import { AlertCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -39,13 +38,8 @@ export function AccountForm() {
         setPassword('')
       } else {
         setMode('authKey')
-        // Same for authKey, it's safer not to show decrypted key if possible,
-        // or decrypt it if we want to show it.
-        try {
-          setAuthKey(decrypt(editingAccount.authKey))
-        } catch {
-          setAuthKey('')
-        }
+        // Don't show existing auth key for security
+        setAuthKey('')
       }
     } else {
       // Reset defaults for add mode
@@ -72,10 +66,7 @@ export function AccountForm() {
         await updateAccount(editingAccount.id, {
           name: name.trim(),
           // Only pass auth details if they are provided/changed
-          authKey:
-            mode === 'authKey' && authKey !== decrypt(editingAccount.authKey)
-              ? authKey.trim()
-              : undefined,
+          authKey: mode === 'authKey' && authKey ? authKey.trim() : undefined,
           // When password is provided, always pass email too (even if unchanged)
           email:
             mode === 'credentials' && (password || email !== editingAccount.email)
@@ -162,9 +153,7 @@ export function AccountForm() {
                 type="password"
                 value={authKey}
                 onChange={(e) => setAuthKey(e.target.value)}
-                placeholder={
-                  isEditing ? 'Leave blank to keep unchanged' : 'Enter your Stremio auth key'
-                }
+                placeholder={isEditing ? '••••• (encrypted)' : 'Enter your Stremio auth key'}
                 required={!isEditing}
               />
               <p className="text-xs text-muted-foreground">

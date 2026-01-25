@@ -81,37 +81,49 @@ export function FAQPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 text-muted-foreground">
+              <p>Your credentials are protected with industry-standard cryptographic encryption.</p>
               <p>
-                Yes. Your credentials are stored securely on your device and are never transmitted
-                to any cloud service or third-party server.
-              </p>
-              <p>
-                <strong>How your credentials are handled:</strong>
+                <strong>How encryption works:</strong>
               </p>
               <ul className="list-disc list-inside space-y-2 ml-2">
                 <li>
-                  <strong>Local storage only:</strong> All credentials (auth keys, email addresses,
-                  and passwords) are stored locally on your device using your browser's IndexedDB
-                  storage. They never leave your computer.
+                  <strong>Master password:</strong> You set a password that encrypts all your
+                  credentials. Without it, data cannot be decrypted.
                 </li>
                 <li>
-                  <strong>Encrypted at rest:</strong> Your credentials are encrypted with AES-256
-                  encryption before being stored, providing an additional layer of security.
+                  <strong>Strong encryption:</strong> AES-256-GCM with PBKDF2-SHA256 (600,000
+                  iterations) - industry standard cryptographic security.
                 </li>
                 <li>
-                  <strong>Stremio API only:</strong> Your credentials are only used to authenticate
-                  and interact with Stremio's official APIs. They are never sent to any other
-                  service or server.
+                  <strong>Local storage only:</strong> Encrypted credentials stored in your
+                  browser's IndexedDB. Never sent to any server except Stremio's official API.
                 </li>
                 <li>
-                  <strong>No cloud storage:</strong> This application has no backend servers.
-                  Everything runs entirely in your browser, and your data never goes to the cloud.
+                  <strong>Session-based:</strong> Your master password is never stored. You must
+                  enter it when opening the app.
                 </li>
               </ul>
               <p>
-                If you're still in doubt, we highly encourage you to read the source code. You'll
-                see there's no hidden functionality going on - everything is transparent and open.
+                <strong>Important:</strong>
               </p>
+              <ul className="list-disc list-inside space-y-2 ml-2">
+                <li>
+                  ⚠️ <strong>Lost password = lost data.</strong> There is no recovery. Write down
+                  your password or use a password manager.
+                </li>
+                <li>
+                  ⚠️ <strong>Password required on startup.</strong> You'll need to unlock the app
+                  each time.
+                </li>
+              </ul>
+              <p>
+                <strong>Best practices:</strong>
+              </p>
+              <ul className="list-disc list-inside space-y-2 ml-2">
+                <li>Use a strong password (8+ characters minimum)</li>
+                <li>Store it in a password manager</li>
+                <li>Use OS-level disk encryption (FileVault, BitLocker)</li>
+              </ul>
             </div>
           </CardContent>
         </Card>

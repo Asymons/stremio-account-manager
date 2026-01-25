@@ -5,7 +5,8 @@ import {
   updateAddons,
 } from '@/api/addons'
 import { loginWithCredentials } from '@/api/auth'
-import { decrypt, encrypt } from '@/lib/encryption'
+import { decrypt, encrypt } from '@/lib/crypto'
+import { useAuthStore } from '@/store/authStore'
 import { accountExportSchema } from '@/lib/validation'
 import { loadAddonLibrary, saveAddonLibrary } from '@/lib/addon-storage'
 import { toast } from '@/hooks/use-toast'
@@ -25,6 +26,13 @@ const sanitizeAddonManifest = (manifest: AddonDescriptor['manifest']) => {
     background: manifest.background ?? undefined,
     idPrefixes: manifest.idPrefixes ?? undefined,
   }
+}
+
+// Helper function to get encryption key from auth store
+const getEncryptionKey = () => {
+  const key = useAuthStore.getState().encryptionKey
+  if (!key) throw new Error('App is locked')
+  return key
 }
 
 interface AccountStore {
@@ -88,7 +96,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       const account: StremioAccount = {
         id: crypto.randomUUID(),
         name,
-        authKey: encrypt(authKey),
+        authKey: await encrypt(authKey, getEncryptionKey()),
         addons: normalizedAddons,
         lastSync: new Date(),
         status: 'active',
@@ -127,8 +135,8 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         id: crypto.randomUUID(),
         name: name || email,
         email,
-        authKey: encrypt(response.authKey),
-        password: encrypt(password),
+        authKey: await encrypt(response.authKey, getEncryptionKey()),
+        password: await encrypt(password, getEncryptionKey()),
         addons: normalizedAddons,
         lastSync: new Date(),
         status: 'active',
@@ -162,7 +170,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         throw new Error('Account not found')
       }
 
-      const authKey = decrypt(account.authKey)
+      const authKey = await decrypt(account.authKey, getEncryptionKey())
       const addons = await getAddons(authKey)
 
       // Normalize addon manifests
@@ -212,7 +220,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
 
     for (const account of accounts) {
       try {
-        const authKey = decrypt(account.authKey)
+        const authKey = await decrypt(account.authKey, getEncryptionKey())
         const addons = await getAddons(authKey)
 
         // Normalize addon manifests
@@ -261,7 +269,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         throw new Error('Account not found')
       }
 
-      const authKey = decrypt(account.authKey)
+      const authKey = await decrypt(account.authKey, getEncryptionKey())
       const updatedAddons = await apiInstallAddon(authKey, addonUrl)
 
       // Normalize addon manifests
@@ -297,7 +305,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         throw new Error('Account not found')
       }
 
-      const authKey = decrypt(account.authKey)
+      const authKey = await decrypt(account.authKey, getEncryptionKey())
       const updatedAddons = await apiRemoveAddon(authKey, addonId)
 
       // Normalize addon manifests
@@ -333,7 +341,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         throw new Error('Account not found')
       }
 
-      const authKey = decrypt(account.authKey)
+      const authKey = await decrypt(account.authKey, getEncryptionKey())
       await updateAddons(authKey, newOrder)
 
       const updatedAccount = {
@@ -370,16 +378,23 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       const data: AccountExport = {
         version: '1.0.0',
         exportedAt: new Date().toISOString(),
-        accounts: get().accounts.map((acc) => ({
-          name: acc.name,
-          email: acc.email,
-          authKey: includeCredentials ? decrypt(acc.authKey) : undefined,
-          password: includeCredentials && acc.password ? decrypt(acc.password) : undefined,
-          addons: acc.addons.map((addon) => ({
-            ...addon,
-            manifest: sanitizeAddonManifest(addon.manifest),
-          })),
-        })),
+        accounts: await Promise.all(
+          get().accounts.map(async (acc) => ({
+            name: acc.name,
+            email: acc.email,
+            authKey: includeCredentials
+              ? await decrypt(acc.authKey, getEncryptionKey())
+              : undefined,
+            password:
+              includeCredentials && acc.password
+                ? await decrypt(acc.password, getEncryptionKey())
+                : undefined,
+            addons: acc.addons.map((addon) => ({
+              ...addon,
+              manifest: sanitizeAddonManifest(addon.manifest),
+            })),
+          }))
+        ),
         savedAddons: savedAddons.length > 0 ? savedAddons : undefined,
       }
 
@@ -390,16 +405,23 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       const data: AccountExport = {
         version: '1.0.0',
         exportedAt: new Date().toISOString(),
-        accounts: get().accounts.map((acc) => ({
-          name: acc.name,
-          email: acc.email,
-          authKey: includeCredentials ? decrypt(acc.authKey) : undefined,
-          password: includeCredentials && acc.password ? decrypt(acc.password) : undefined,
-          addons: acc.addons.map((addon) => ({
-            ...addon,
-            manifest: sanitizeAddonManifest(addon.manifest),
-          })),
-        })),
+        accounts: await Promise.all(
+          get().accounts.map(async (acc) => ({
+            name: acc.name,
+            email: acc.email,
+            authKey: includeCredentials
+              ? await decrypt(acc.authKey, getEncryptionKey())
+              : undefined,
+            password:
+              includeCredentials && acc.password
+                ? await decrypt(acc.password, getEncryptionKey())
+                : undefined,
+            addons: acc.addons.map((addon) => ({
+              ...addon,
+              manifest: sanitizeAddonManifest(addon.manifest),
+            })),
+          }))
+        ),
       }
 
       return JSON.stringify(data, null, 2)
@@ -414,19 +436,21 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       // Validate with Zod
       const validated = accountExportSchema.parse(data)
 
-      const newAccounts: StremioAccount[] = validated.accounts.map((acc) => ({
-        id: crypto.randomUUID(),
-        name: acc.name,
-        email: acc.email,
-        authKey: acc.authKey ? encrypt(acc.authKey) : '',
-        password: acc.password ? encrypt(acc.password) : undefined,
-        addons: acc.addons.map((addon) => ({
-          ...addon,
-          manifest: sanitizeAddonManifest(addon.manifest),
-        })),
-        lastSync: new Date(),
-        status: 'active',
-      }))
+      const newAccounts: StremioAccount[] = await Promise.all(
+        validated.accounts.map(async (acc) => ({
+          id: crypto.randomUUID(),
+          name: acc.name,
+          email: acc.email,
+          authKey: acc.authKey ? await encrypt(acc.authKey, getEncryptionKey()) : '',
+          password: acc.password ? await encrypt(acc.password, getEncryptionKey()) : undefined,
+          addons: acc.addons.map((addon) => ({
+            ...addon,
+            manifest: sanitizeAddonManifest(addon.manifest),
+          })),
+          lastSync: new Date(),
+          status: 'active',
+        }))
+      )
 
       // Merge with existing accounts
       const accounts = [...get().accounts, ...newAccounts]
@@ -490,13 +514,13 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
 
         if (data.authKey) {
           authKey = data.authKey
-          updatedAccount.authKey = encrypt(authKey)
+          updatedAccount.authKey = await encrypt(authKey, getEncryptionKey())
         } else if (data.email && data.password) {
           const response = await loginWithCredentials(data.email, data.password)
           authKey = response.authKey
           updatedAccount.email = data.email
-          updatedAccount.password = encrypt(data.password)
-          updatedAccount.authKey = encrypt(authKey)
+          updatedAccount.password = await encrypt(data.password, getEncryptionKey())
+          updatedAccount.authKey = await encrypt(authKey, getEncryptionKey())
         }
 
         // Fetch addons with new key
