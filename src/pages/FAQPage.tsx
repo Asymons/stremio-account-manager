@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 export function FAQPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-2">Frequently Asked Questions</h1>
-        <p className="text-muted-foreground">
+      <div className="text-center mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-4xl font-bold mb-2">Frequently Asked Questions</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           Common questions and answers about Stremio Account Manager
         </p>
       </div>

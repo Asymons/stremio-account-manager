@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { normalizeTagName } from '@/lib/addon-validator'
 import { useAddonStore } from '@/store/addonStore'
+import { useUIStore } from '@/store/uiStore'
 import { SavedAddon } from '@/types/saved-addon'
 import { useState } from 'react'
 
@@ -11,17 +12,16 @@ interface SavedAddonDetailsProps {
   onClose: () => void
 }
 
-export function SavedAddonDetails({
-  savedAddon,
-  onClose,
-}: SavedAddonDetailsProps) {
+export function SavedAddonDetails({ savedAddon, onClose }: SavedAddonDetailsProps) {
   const { updateSavedAddon, loading, error } = useAddonStore()
+  const isPrivacyModeEnabled = useUIStore((state) => state.isPrivacyModeEnabled)
 
   const [formData, setFormData] = useState({
     name: savedAddon.name,
     tags: savedAddon.tags.join(', '),
     installUrl: savedAddon.installUrl,
   })
+
   const [formError, setFormError] = useState<string | null>(null)
 
   const hasChanges =
@@ -57,9 +57,7 @@ export function SavedAddonDetails({
       {/* Error Display */}
       {(formError || error) && (
         <div className="p-3 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-          <p className="text-sm text-red-600 dark:text-red-400">
-            {formError || error}
-          </p>
+          <p className="text-sm text-red-600 dark:text-red-400">{formError || error}</p>
         </div>
       )}
 
@@ -71,9 +69,7 @@ export function SavedAddonDetails({
             id="edit-name"
             type="text"
             value={formData.name}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, name: e.target.value }))
-            }
+            onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
             maxLength={100}
             required
           />
@@ -86,9 +82,7 @@ export function SavedAddonDetails({
             id="edit-tags"
             type="text"
             value={formData.tags}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, tags: e.target.value }))
-            }
+            onChange={(e) => setFormData((prev) => ({ ...prev, tags: e.target.value }))}
             placeholder="e.g., essential, torrent, debrid"
           />
         </div>
@@ -98,11 +92,9 @@ export function SavedAddonDetails({
           <Label htmlFor="edit-url">Install URL</Label>
           <Input
             id="edit-url"
-            type="url"
+            type={isPrivacyModeEnabled ? 'password' : 'url'}
             value={formData.installUrl}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, installUrl: e.target.value }))
-            }
+            onChange={(e) => setFormData((prev) => ({ ...prev, installUrl: e.target.value }))}
             required
           />
         </div>
@@ -130,7 +122,8 @@ export function SavedAddonDetails({
                 <span className="font-medium">Name:</span> {savedAddon.manifest.name}
               </p>
               <p>
-                <span className="font-medium">ID:</span> {savedAddon.manifest.id}
+                <span className="font-medium">ID:</span>{' '}
+                {isPrivacyModeEnabled ? '********' : savedAddon.manifest.id}
               </p>
               <p>
                 <span className="font-medium">Version:</span> {savedAddon.manifest.version}
@@ -154,10 +147,7 @@ export function SavedAddonDetails({
 
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-4">
-          <Button
-            type="submit"
-            disabled={loading || !hasChanges}
-          >
+          <Button type="submit" disabled={loading || !hasChanges}>
             {loading ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>

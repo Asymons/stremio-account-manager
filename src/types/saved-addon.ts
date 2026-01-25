@@ -7,18 +7,24 @@ import { AddonManifest } from './addon'
  * Saved addons can be tagged, organized, and applied to accounts individually or in bulk.
  */
 export interface SavedAddon {
-  id: string                    // UUID
-  name: string                  // User-defined name (e.g., "Torrentio - RD+AD")
-  installUrl: string            // Full addon URL with any config embedded
-  manifest: AddonManifest       // Cached manifest data
-  tags: string[]                // User-defined tags for organization
+  id: string // UUID
+  name: string // User-defined name (e.g., "Torrentio - RD+AD")
+  installUrl: string // Full addon URL with any config embedded
+  manifest: AddonManifest // Cached manifest data
+  tags: string[] // User-defined tags for organization
   createdAt: Date
   updatedAt: Date
   lastUsed?: Date
 
   // Tracking
   sourceType: 'manual' | 'cloned-from-account'
-  sourceAccountId?: string      // If cloned from an account
+  sourceAccountId?: string // If cloned from an account
+
+  // Health monitoring
+  health?: {
+    isOnline: boolean
+    lastChecked: number // timestamp
+  }
 }
 
 /**
@@ -32,11 +38,11 @@ export interface AccountAddonState {
 
 export interface InstalledAddon {
   savedAddonId: string | null // Null if manually installed outside library
-  addonId: string             // The manifest.id from Stremio
-  installUrl: string          // Current URL on account
+  addonId: string // The manifest.id from Stremio
+  installUrl: string // Current URL on account
   installedAt: Date
   installedVia: 'saved-addon' | 'tag' | 'manual'
-  appliedTags?: string[]      // Tags that were used to apply this addon
+  appliedTags?: string[] // Tags that were used to apply this addon
 }
 
 /**
@@ -84,5 +90,5 @@ export interface BulkResult {
 export const STORAGE_KEYS = {
   ADDON_LIBRARY: 'stremio-manager:addon-library',
   ACCOUNT_ADDONS: 'stremio-manager:account-addons',
-  ACCOUNTS: 'stremio-manager:accounts'
+  ACCOUNTS: 'stremio-manager:accounts',
 } as const

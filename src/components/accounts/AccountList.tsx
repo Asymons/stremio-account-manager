@@ -38,15 +38,9 @@ export function AccountList() {
   if (accounts.length === 0) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-semibold text-muted-foreground mb-2">
-          No accounts yet
-        </h2>
-        <p className="text-muted-foreground mb-4">
-          Click "Add Account" to get started
-        </p>
-        <Button onClick={() => openAddAccountDialog()}>
-          Add Account
-        </Button>
+        <h2 className="text-2xl font-semibold text-muted-foreground mb-2">No accounts yet</h2>
+        <p className="text-muted-foreground mb-4">Click "Add Account" to get started</p>
+        <Button onClick={() => openAddAccountDialog()}>Add Account</Button>
       </div>
     )
   }
@@ -56,35 +50,41 @@ export function AccountList() {
       {error && (
         <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-md flex items-center justify-between">
           <span>{error}</span>
-          <button
-            onClick={clearError}
-            className="text-destructive hover:text-destructive/80"
-          >
+          <button onClick={clearError} className="text-destructive hover:text-destructive/80">
             ✕
           </button>
         </div>
       )}
 
       {/* Bulk Actions Toolbar */}
-      <div className="flex items-center justify-between bg-card border rounded-md p-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-card border rounded-md p-3 gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+          <span className="text-sm font-medium whitespace-nowrap text-foreground">
             {selectedAccountIds.size} of {accounts.length} selected
           </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={selectAll}>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" size="sm" onClick={selectAll} className="flex-1 sm:flex-none">
               Select All
             </Button>
             {selectedAccountIds.size > 0 && (
-              <Button variant="outline" size="sm" onClick={clearSelection}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearSelection}
+                className="flex-1 sm:flex-none"
+              >
                 Clear Selection
               </Button>
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {selectedAccountIds.size > 0 && (
-            <Button size="sm" onClick={() => setShowBulkActions(true)}>
+            <Button
+              size="sm"
+              onClick={() => setShowBulkActions(true)}
+              className="flex-1 sm:flex-none"
+            >
               Bulk Actions
             </Button>
           )}
@@ -93,11 +93,12 @@ export function AccountList() {
             variant="outline"
             onClick={syncAllAccounts}
             disabled={loading || accounts.length === 0}
+            className="flex-1 sm:flex-none"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Sync All
           </Button>
-          <Button size="sm" onClick={() => openAddAccountDialog()}>
+          <Button size="sm" onClick={() => openAddAccountDialog()} className="flex-1 sm:flex-none">
             Add Account
           </Button>
         </div>

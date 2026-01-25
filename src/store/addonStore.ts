@@ -1,22 +1,23 @@
 import { getAddons, updateAddons } from '@/api/addons'
 import { mergeAddons, removeAddons } from '@/lib/addon-merger'
 import {
-    findSavedAddonByUrl,
-    loadAccountAddonStates,
-    loadAddonLibrary,
-    saveAccountAddonStates,
-    saveAddonLibrary,
+  findSavedAddonByUrl,
+  loadAccountAddonStates,
+  loadAddonLibrary,
+  saveAccountAddonStates,
+  saveAddonLibrary,
 } from '@/lib/addon-storage'
 import { normalizeTagName, validateAddonUrl } from '@/lib/addon-validator'
+import { checkAllAddonsHealth } from '@/lib/addon-health'
 import { decrypt } from '@/lib/encryption'
 import { AddonManifest } from '@/types/addon'
 import {
-    AccountAddonState,
-    BulkResult,
-    InstalledAddon,
-    MergeResult,
-    MergeStrategy,
-    SavedAddon,
+  AccountAddonState,
+  BulkResult,
+  InstalledAddon,
+  MergeResult,
+  MergeStrategy,
+  SavedAddon,
 } from '@/types/saved-addon'
 import { create } from 'zustand'
 
@@ -26,6 +27,7 @@ interface AddonStore {
   accountStates: Record<string, AccountAddonState>
   loading: boolean
   error: string | null
+  checkingHealth: boolean
 
   // Initialization
   initialize: () => Promise<void>
@@ -45,9 +47,7 @@ interface AddonStore {
   ) => Promise<string>
   updateSavedAddon: (
     id: string,
-    updates: Partial<
-      Pick<SavedAddon, 'name' | 'tags' | 'installUrl'>
-    >
+    updates: Partial<Pick<SavedAddon, 'name' | 'tags' | 'installUrl'>>
   ) => Promise<void>
   deleteSavedAddon: (id: string) => Promise<void>
   getSavedAddon: (id: string) => SavedAddon | null
@@ -105,13 +105,14 @@ interface AddonStore {
 
   // === Sync ===
   syncAccountState: (accountId: string, accountAuthKey: string) => Promise<void>
-  syncAllAccountStates: (
-    accounts: Array<{ id: string; authKey: string }>
-  ) => Promise<void>
+  syncAllAccountStates: (accounts: Array<{ id: string; authKey: string }>) => Promise<void>
 
   // === Import/Export ===
   exportLibrary: () => string
   importLibrary: (json: string, merge: boolean) => Promise<void>
+
+  // === Health Checking ===
+  checkAllHealth: () => Promise<void>
 
   // Utility
   clearError: () => void
@@ -122,6 +123,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
   accountStates: {},
   loading: false,
   error: null,
+  checkingHealth: false,
 
   initialize: async () => {
     try {
@@ -176,8 +178,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
       await saveAddonLibrary(library)
       return savedAddon.id
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to create saved addon'
+      const message = error instanceof Error ? error.message : 'Failed to create saved addon'
       set({ error: message })
       throw error
     } finally {
@@ -194,9 +195,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
         throw new Error('Account state not found')
       }
 
-      const installedAddon = state.installedAddons.find(
-        (a) => a.addonId === addonId
-      )
+      const installedAddon = state.installedAddons.find((a) => a.addonId === addonId)
       if (!installedAddon) {
         throw new Error('Addon not found in account')
       }
@@ -228,8 +227,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
       await saveAddonLibrary(library)
       return savedAddon.id
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to clone saved addon'
+      const message = error instanceof Error ? error.message : 'Failed to clone saved addon'
       set({ error: message })
       throw error
     } finally {
@@ -245,7 +243,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
         throw new Error('Saved addon not found')
       }
 
-      let updatedSavedAddon = { ...savedAddon }
+      const updatedSavedAddon = { ...savedAddon }
 
       // If URL is being updated, validate and fetch new manifest
       if (updates.installUrl && updates.installUrl !== savedAddon.installUrl) {
@@ -272,8 +270,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
       await saveAddonLibrary(library)
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to update saved addon'
+      const message = error instanceof Error ? error.message : 'Failed to update saved addon'
       set({ error: message })
       throw error
     } finally {
@@ -282,7 +279,8 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
   },
 
   deleteSavedAddon: async (id) => {
-    const { [id]: deleted, ...library } = get().library
+    const library = { ...get().library }
+    delete library[id]
     set({ library })
     await saveAddonLibrary(library)
   },
@@ -320,9 +318,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
     let hasChanges = false
 
     for (const savedAddon of Object.values(library)) {
-      const tagIndex = savedAddon.tags.findIndex(
-        (t) => normalizeTagName(t) === normalizedOld
-      )
+      const tagIndex = savedAddon.tags.findIndex((t) => normalizeTagName(t) === normalizedOld)
       if (tagIndex >= 0) {
         savedAddon.tags[tagIndex] = normalizedNew
         savedAddon.updatedAt = new Date()
@@ -338,7 +334,12 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
   // === Application (Single Saved Addon) ===
 
-  applySavedAddonToAccount: async (savedAddonId, accountId, accountAuthKey, strategy = 'replace-matching') => {
+  applySavedAddonToAccount: async (
+    savedAddonId,
+    accountId,
+    accountAuthKey,
+    strategy = 'replace-matching'
+  ) => {
     set({ loading: true, error: null })
     try {
       const savedAddon = get().library[savedAddonId]
@@ -371,8 +372,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
       return result
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to apply saved addon'
+      const message = error instanceof Error ? error.message : 'Failed to apply saved addon'
       set({ error: message })
       throw error
     } finally {
@@ -426,8 +426,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
       return result
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to apply tag'
+      const message = error instanceof Error ? error.message : 'Failed to apply tag'
       set({ error: message })
       throw error
     } finally {
@@ -464,8 +463,11 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
           const authKey = decrypt(accountAuthKey)
           const currentAddons = await getAddons(authKey)
 
-          const { addons: updatedAddons, result: mergeResult } =
-            await mergeAddons(currentAddons, savedAddons, strategy)
+          const { addons: updatedAddons, result: mergeResult } = await mergeAddons(
+            currentAddons,
+            savedAddons,
+            strategy
+          )
 
           await updateAddons(authKey, updatedAddons)
 
@@ -493,8 +495,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
       return result
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to apply saved addons'
+      const message = error instanceof Error ? error.message : 'Failed to apply saved addons'
       set({ error: message })
       throw error
     } finally {
@@ -530,8 +531,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
           const authKey = decrypt(accountAuthKey)
           const currentAddons = await getAddons(authKey)
 
-          const { addons: updatedAddons, protectedAddons } =
-            removeAddons(currentAddons, addonIds)
+          const { addons: updatedAddons, protectedAddons } = removeAddons(currentAddons, addonIds)
 
           await updateAddons(authKey, updatedAddons)
 
@@ -544,8 +544,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
               skipped: [],
               protected: protectedAddons.map((id) => ({
                 addonId: id,
-                name: currentAddons.find((a) => a.manifest.id === id)?.manifest
-                  .name || id,
+                name: currentAddons.find((a) => a.manifest.id === id)?.manifest.name || id,
               })),
             },
           })
@@ -563,8 +562,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
 
       return result
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to remove addons'
+      const message = error instanceof Error ? error.message : 'Failed to remove addons'
       set({ error: message })
       throw error
     } finally {
@@ -595,9 +593,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
       const installedAddons: InstalledAddon[] = []
 
       for (const addon of currentAddons) {
-        const existing = existingState?.installedAddons.find(
-          (a) => a.addonId === addon.manifest.id
-        )
+        const existing = existingState?.installedAddons.find((a) => a.addonId === addon.manifest.id)
 
         if (existing) {
           // Update existing
@@ -607,10 +603,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
           })
         } else {
           // New addon - try to auto-link to saved addon
-          const matchingSavedAddon = findSavedAddonByUrl(
-            get().library,
-            addon.transportUrl
-          )
+          const matchingSavedAddon = findSavedAddonByUrl(get().library, addon.transportUrl)
 
           installedAddons.push({
             savedAddonId: matchingSavedAddon?.id || null,
@@ -675,7 +668,7 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
         throw new Error('Invalid export format')
       }
 
-      let library = merge ? { ...get().library } : {}
+      const library = merge ? { ...get().library } : {}
 
       for (const savedAddon of savedAddons) {
         // Generate new ID if merging to avoid conflicts
@@ -693,12 +686,34 @@ export const useAddonStore = create<AddonStore>((set, get) => ({
       set({ library })
       await saveAddonLibrary(library)
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to import library'
+      const message = error instanceof Error ? error.message : 'Failed to import library'
       set({ error: message })
       throw error
     } finally {
       set({ loading: false })
+    }
+  },
+
+  // === Health Checking ===
+
+  checkAllHealth: async () => {
+    set({ checkingHealth: true })
+    try {
+      const addons = Object.values(get().library)
+      const updatedAddons = await checkAllAddonsHealth(addons)
+
+      // Update library with health status
+      const library: Record<string, SavedAddon> = {}
+      updatedAddons.forEach((addon) => {
+        library[addon.id] = addon
+      })
+
+      set({ library })
+      await saveAddonLibrary(library)
+    } catch (error) {
+      console.error('Failed to check addon health:', error)
+    } finally {
+      set({ checkingHealth: false })
     }
   },
 

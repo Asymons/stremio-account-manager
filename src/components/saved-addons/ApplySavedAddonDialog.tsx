@@ -2,8 +2,10 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useAddonStore } from '@/store/addonStore'
-import { MergeStrategy, SavedAddon } from '@/types/saved-addon'
+import { useUIStore } from '@/store/uiStore'
+import { BulkResult, MergeStrategy, SavedAddon } from '@/types/saved-addon'
 import { useState } from 'react'
+import { maskEmail } from '@/lib/utils'
 
 interface ApplySavedAddonDialogProps {
   savedAddon: SavedAddon
@@ -12,13 +14,14 @@ interface ApplySavedAddonDialogProps {
 
 export function ApplySavedAddonDialog({ savedAddon, onClose }: ApplySavedAddonDialogProps) {
   const { applySavedAddonToAccounts, loading } = useAddonStore()
+  const isPrivacyModeEnabled = useUIStore((state) => state.isPrivacyModeEnabled)
   const { accounts } = useAccounts()
 
   const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(new Set())
   const [strategy, setStrategy] = useState<MergeStrategy>('replace-matching')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<BulkResult | null>(null)
 
   const toggleAccount = (accountId: string) => {
     setSelectedAccountIds((prev) => {
@@ -54,11 +57,7 @@ export function ApplySavedAddonDialog({ savedAddon, onClose }: ApplySavedAddonDi
         .filter((a) => selectedAccountIds.has(a.id))
         .map((a) => ({ id: a.id, authKey: a.authKey }))
 
-      const bulkResult = await applySavedAddonToAccounts(
-        savedAddon.id,
-        accountsToApply,
-        strategy
-      )
+      const bulkResult = await applySavedAddonToAccounts(savedAddon.id, accountsToApply, strategy)
 
       setResult(bulkResult)
       setSuccess(true)
@@ -142,20 +141,10 @@ export function ApplySavedAddonDialog({ savedAddon, onClose }: ApplySavedAddonDi
         <div className="flex items-center justify-between">
           <Label>Select Accounts ({selectedAccountIds.size} selected)</Label>
           <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={selectAll}
-            >
+            <Button type="button" variant="outline" size="sm" onClick={selectAll}>
               Select All
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={selectNone}
-            >
+            <Button type="button" variant="outline" size="sm" onClick={selectNone}>
               Clear
             </Button>
           </div>
@@ -163,9 +152,7 @@ export function ApplySavedAddonDialog({ savedAddon, onClose }: ApplySavedAddonDi
 
         <div className="border rounded-md max-h-64 overflow-y-auto">
           {accounts.length === 0 ? (
-            <p className="text-sm text-muted-foreground p-4 text-center">
-              No accounts available
-            </p>
+            <p className="text-sm text-muted-foreground p-4 text-center">No accounts available</p>
           ) : (
             <div className="divide-y">
               {accounts.map((account) => (
@@ -179,13 +166,24 @@ export function ApplySavedAddonDialog({ savedAddon, onClose }: ApplySavedAddonDi
                     onChange={() => toggleAccount(account.id)}
                   />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{account.name}</p>
+                    <p className="text-sm font-medium">
+                      {(() => {
+                        const isNameCustomized =
+                          account.name !== account.email && account.name !== 'Stremio Account'
+                        return isPrivacyModeEnabled && !isNameCustomized
+                          ? account.name.includes('@')
+                            ? maskEmail(account.name)
+                            : '********'
+                          : account.name
+                      })()}
+                    </p>
                     {account.email && (
                       <p className="text-xs text-muted-foreground">
-                        {account.email}
+                        {isPrivacyModeEnabled ? maskEmail(account.email) : account.email}
                       </p>
                     )}
                   </div>
+
                   <span className="text-xs text-muted-foreground">
                     {account.addons.length} addons
                   </span>

@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { useAccounts } from '@/hooks/useAccounts'
 import { decrypt } from '@/lib/encryption'
 import { useUIStore } from '@/store/uiStore'
+import { AlertCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 export function AccountForm() {
@@ -75,8 +76,11 @@ export function AccountForm() {
             mode === 'authKey' && authKey !== decrypt(editingAccount.authKey)
               ? authKey.trim()
               : undefined,
+          // When password is provided, always pass email too (even if unchanged)
           email:
-            mode === 'credentials' && email !== editingAccount.email ? email.trim() : undefined,
+            mode === 'credentials' && (password || email !== editingAccount.email)
+              ? email.trim() || editingAccount.email
+              : undefined,
           password: mode === 'credentials' && password ? password : undefined,
         })
       } else {
@@ -176,6 +180,8 @@ export function AccountForm() {
                 <Input
                   id="email"
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
@@ -188,6 +194,7 @@ export function AccountForm() {
                 <Input
                   id="password"
                   type="password"
+                  autoComplete={isEditing ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={isEditing ? 'Leave blank to keep unchanged' : 'Enter your password'}
@@ -198,8 +205,18 @@ export function AccountForm() {
           )}
 
           {error && (
-            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
-              {error}
+            <div className="bg-destructive/10 border border-destructive/50 rounded-md px-3 py-2">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-destructive">{error}</p>
+                  {error.includes('Invalid email or password') && (
+                    <p className="text-xs text-destructive/80 mt-1">
+                      Double-check your email and password. Passwords are case-sensitive.
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

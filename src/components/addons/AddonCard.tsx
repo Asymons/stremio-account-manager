@@ -19,8 +19,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAddonStore } from '@/store/addonStore'
+import { useUIStore } from '@/store/uiStore'
 import { AddonDescriptor } from '@/types/addon'
 import { useMemo, useState } from 'react'
+import { Copy, ExternalLink } from 'lucide-react'
+import { maskUrl, getStremioLink } from '@/lib/utils'
+import { useToast } from '@/hooks/use-toast'
 
 interface AddonCardProps {
   addon: AddonDescriptor
@@ -31,6 +35,8 @@ interface AddonCardProps {
 
 export function AddonCard({ addon, accountId, onRemove, loading }: AddonCardProps) {
   const { library, createSavedAddon, loading: storeLoading } = useAddonStore()
+  const isPrivacyModeEnabled = useUIStore((state) => state.isPrivacyModeEnabled)
+  const { toast } = useToast()
   const [saving, setSaving] = useState(false)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showRemoveDialog, setShowRemoveDialog] = useState(false)
@@ -96,6 +102,18 @@ export function AddonCard({ addon, accountId, onRemove, loading }: AddonCardProp
     }
   }
 
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(addon.transportUrl)
+    toast({
+      title: 'URL Copied',
+      description: 'Addon URL copied to clipboard',
+    })
+  }
+
+  const handleOpenInStremio = () => {
+    window.location.href = getStremioLink(addon.transportUrl)
+  }
+
   return (
     <Card className="flex flex-col">
       <CardHeader>
@@ -128,7 +146,27 @@ export function AddonCard({ addon, accountId, onRemove, loading }: AddonCardProp
 
       <CardContent className="flex-grow">
         <p className="text-sm text-muted-foreground line-clamp-2">{addon.manifest.description}</p>
-        <div className="mt-2 text-xs text-muted-foreground truncate">{addon.transportUrl}</div>
+        <div className="mt-4 flex items-center gap-2">
+          <button
+            onClick={handleCopyUrl}
+            className="text-xs text-muted-foreground truncate font-mono bg-muted/50 px-2 py-1.5 rounded flex-1 flex items-center justify-between gap-2 hover:bg-muted transition-colors group"
+            title="Copy URL"
+          >
+            <span className="truncate">
+              {isPrivacyModeEnabled ? maskUrl(addon.transportUrl) : addon.transportUrl}
+            </span>
+            <Copy className="h-3.5 w-3.5 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
+          </button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={handleOpenInStremio}
+            title="Open in Stremio"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        </div>
       </CardContent>
 
       <CardFooter className="flex flex-col gap-2">

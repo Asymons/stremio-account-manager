@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select'
 import { useAddonStore } from '@/store/addonStore'
 import { StremioAccount } from '@/types/account'
-import { MergeStrategy } from '@/types/saved-addon'
+import { BulkResult, MergeStrategy } from '@/types/saved-addon'
 import { useState } from 'react'
 
 interface BulkActionsDialogProps {
@@ -17,16 +17,9 @@ interface BulkActionsDialogProps {
   onClose: () => void
 }
 
-type BulkAction =
-  | 'add-saved-addons'
-  | 'add-by-tag'
-  | 'remove-addons'
-  | 'remove-by-tag'
+type BulkAction = 'add-saved-addons' | 'add-by-tag' | 'remove-addons' | 'remove-by-tag'
 
-export function BulkActionsDialog({
-  selectedAccounts,
-  onClose,
-}: BulkActionsDialogProps) {
+export function BulkActionsDialog({ selectedAccounts, onClose }: BulkActionsDialogProps) {
   const {
     library,
     getAllTags,
@@ -39,18 +32,14 @@ export function BulkActionsDialog({
 
   const [action, setAction] = useState<BulkAction>('add-saved-addons')
   const [strategy, setStrategy] = useState<MergeStrategy>('replace-matching')
-  const [selectedSavedAddonIds, setSelectedSavedAddonIds] = useState<Set<string>>(
-    new Set()
-  )
+  const [selectedSavedAddonIds, setSelectedSavedAddonIds] = useState<Set<string>>(new Set())
   const [selectedTag, setSelectedTag] = useState<string>('')
   const [selectedAddonIds, setSelectedAddonIds] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<BulkResult | null>(null)
 
-  const savedAddons = Object.values(library).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  )
+  const savedAddons = Object.values(library).sort((a, b) => a.name.localeCompare(b.name))
   const allTags = getAllTags()
 
   const currentTagAddonsCount = selectedTag
@@ -133,10 +122,7 @@ export function BulkActionsDialog({
             setError('Please select at least one addon to remove')
             return
           }
-          bulkResult = await bulkRemoveAddons(
-            Array.from(selectedAddonIds),
-            accountsData
-          )
+          bulkResult = await bulkRemoveAddons(Array.from(selectedAddonIds), accountsData)
           break
 
         case 'remove-by-tag':
@@ -182,10 +168,9 @@ export function BulkActionsDialog({
       )}
 
       {/* Selected Accounts */}
-      <div className="p-3 rounded-md bg-gray-50 dark:bg-gray-900">
-        <p className="text-sm font-medium">
-          {selectedAccounts.length} account{selectedAccounts.length !== 1 ? 's' : ''}{' '}
-          selected
+      <div className="p-3 rounded-md bg-muted/50 border">
+        <p className="text-sm font-medium text-foreground">
+          {selectedAccounts.length} account{selectedAccounts.length !== 1 ? 's' : ''} selected
         </p>
       </div>
 
@@ -221,9 +206,7 @@ export function BulkActionsDialog({
                 />
                 <div>
                   <p className="font-medium text-sm">Replace Matching</p>
-                  <p className="text-xs text-muted-foreground">
-                    Replace if exists, otherwise add
-                  </p>
+                  <p className="text-xs text-muted-foreground">Replace if exists, otherwise add</p>
                 </div>
               </label>
               <label className="flex items-start gap-2 cursor-pointer">
@@ -236,18 +219,14 @@ export function BulkActionsDialog({
                 />
                 <div>
                   <p className="font-medium text-sm">Add Only</p>
-                  <p className="text-xs text-muted-foreground">
-                    Skip if already exists
-                  </p>
+                  <p className="text-xs text-muted-foreground">Skip if already exists</p>
                 </div>
               </label>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>
-              Select Saved Addons ({selectedSavedAddonIds.size} selected)
-            </Label>
+            <Label>Select Saved Addons ({selectedSavedAddonIds.size} selected)</Label>
             <div className="border rounded-md max-h-64 overflow-y-auto">
               {savedAddons.length === 0 ? (
                 <p className="text-sm text-muted-foreground p-4 text-center">
@@ -258,7 +237,7 @@ export function BulkActionsDialog({
                   {savedAddons.map((savedAddon) => (
                     <label
                       key={savedAddon.id}
-                      className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer"
+                      className="flex items-center gap-3 p-3 hover:bg-accent/50 dark:hover:bg-accent/30 cursor-pointer transition-colors"
                     >
                       <input
                         type="checkbox"
@@ -267,9 +246,7 @@ export function BulkActionsDialog({
                       />
                       <div className="flex-1">
                         <p className="text-sm font-medium">{savedAddon.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {savedAddon.manifest.name}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{savedAddon.manifest.name}</p>
                       </div>
                     </label>
                   ))}
@@ -296,9 +273,7 @@ export function BulkActionsDialog({
                 />
                 <div>
                   <p className="font-medium text-sm">Replace Matching</p>
-                  <p className="text-xs text-muted-foreground">
-                    Replace if exists, otherwise add
-                  </p>
+                  <p className="text-xs text-muted-foreground">Replace if exists, otherwise add</p>
                 </div>
               </label>
               <label className="flex items-start gap-2 cursor-pointer">
@@ -311,9 +286,7 @@ export function BulkActionsDialog({
                 />
                 <div>
                   <p className="font-medium text-sm">Add Only</p>
-                  <p className="text-xs text-muted-foreground">
-                    Skip if already exists
-                  </p>
+                  <p className="text-xs text-muted-foreground">Skip if already exists</p>
                 </div>
               </label>
             </div>
@@ -327,9 +300,7 @@ export function BulkActionsDialog({
               </SelectTrigger>
               <SelectContent>
                 {allTags.map((tag) => {
-                  const count = savedAddons.filter((addon) =>
-                    addon.tags.includes(tag)
-                  ).length
+                  const count = savedAddons.filter((addon) => addon.tags.includes(tag)).length
                   return (
                     <SelectItem key={tag} value={tag}>
                       {tag} ({count} saved addons)
@@ -353,15 +324,13 @@ export function BulkActionsDialog({
           <Label>Select Addons ({selectedAddonIds.size} selected)</Label>
           <div className="border rounded-md max-h-64 overflow-y-auto">
             {allAddons.length === 0 ? (
-              <p className="text-sm text-muted-foreground p-4 text-center">
-                No addons available
-              </p>
+              <p className="text-sm text-muted-foreground p-4 text-center">No addons available</p>
             ) : (
               <div className="divide-y">
                 {allAddons.map((addon) => (
                   <label
                     key={addon.manifest.id}
-                    className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer"
+                    className="flex items-center gap-3 p-3 hover:bg-accent/50 dark:hover:bg-accent/30 cursor-pointer transition-colors"
                   >
                     <input
                       type="checkbox"
@@ -378,9 +347,7 @@ export function BulkActionsDialog({
                           </span>
                         )}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {addon.manifest.id}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{addon.manifest.id}</p>
                     </div>
                   </label>
                 ))}

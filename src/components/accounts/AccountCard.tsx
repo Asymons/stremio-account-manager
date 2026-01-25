@@ -11,9 +11,10 @@ import {
 import { useAccounts } from '@/hooks/useAccounts'
 import { useUIStore } from '@/store/uiStore'
 import { StremioAccount } from '@/types/account'
-import { MoreVertical, Pencil, RefreshCw, Trash } from 'lucide-react'
+import { AlertCircle, MoreVertical, Pencil, RefreshCw, Trash } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { maskEmail } from '@/lib/utils'
 
 interface AccountCardProps {
   account: StremioAccount
@@ -55,6 +56,15 @@ export function AccountCard({ account, isSelected = false, onToggleSelect }: Acc
 
   const statusColor = account.status === 'active' ? 'bg-green-500' : 'bg-red-500'
   const lastSyncText = new Date(account.lastSync).toLocaleString()
+  const isPrivacyModeEnabled = useUIStore((state) => state.isPrivacyModeEnabled)
+
+  const isNameCustomized = account.name !== account.email && account.name !== 'Stremio Account'
+  const displayName =
+    isPrivacyModeEnabled && !isNameCustomized
+      ? account.name.includes('@')
+        ? maskEmail(account.name)
+        : '********'
+      : account.name
 
   return (
     <Card className={`flex flex-col ${isSelected ? 'ring-2 ring-primary/50' : ''}`}>
@@ -72,10 +82,13 @@ export function AccountCard({ account, isSelected = false, onToggleSelect }: Acc
             <div className="flex-1 min-w-0">
               <CardTitle className="flex items-center gap-2 text-lg font-semibold truncate tracking-tight">
                 <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor}`} />
-                <span className="truncate flex-1">{account.name}</span>
+                <span className="truncate flex-1">{displayName}</span>
               </CardTitle>
+
               {account.email && account.email !== account.name && (
-                <p className="text-sm text-muted-foreground mt-1 truncate">{account.email}</p>
+                <p className="text-sm text-muted-foreground mt-1 truncate">
+                  {isPrivacyModeEnabled ? maskEmail(account.email) : account.email}
+                </p>
               )}
             </div>
             <DropdownMenu>
@@ -119,7 +132,26 @@ export function AccountCard({ account, isSelected = false, onToggleSelect }: Acc
             <span className="text-sm">{lastSyncText}</span>
           </div>
           {account.status === 'error' && (
-            <div className="text-sm text-destructive">Sync failed - check credentials</div>
+            <div className="bg-destructive/10 border border-destructive/50 rounded-md p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-destructive">Authentication Failed</p>
+                  <p className="text-xs text-destructive/80 mt-0.5">
+                    Your credentials are invalid or expired
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEdit}
+                className="w-full mt-2 border-destructive/30 text-destructive hover:bg-destructive/20"
+              >
+                <Pencil className="h-3 w-3 mr-2" />
+                Update Credentials
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>

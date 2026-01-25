@@ -1,10 +1,18 @@
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useUIStore } from '@/store/uiStore'
 import { useAccountStore } from '@/store/accountStore'
+import { ClipboardPaste } from 'lucide-react'
 
 export function AddonInstaller() {
   const isOpen = useUIStore((state) => state.isAddAddonDialogOpen)
@@ -36,11 +44,13 @@ export function AddonInstaller() {
       return
     }
 
+    const normalizedUrl = addonUrl.trim().replace(/^stremio:\/\//, 'https://')
+
     try {
       // Validate URL format
-      new URL(addonUrl)
+      new URL(normalizedUrl)
 
-      await installAddon(selectedAccountId, addonUrl.trim())
+      await installAddon(selectedAccountId, normalizedUrl)
       handleClose()
     } catch (err) {
       if (err instanceof TypeError) {
@@ -48,6 +58,17 @@ export function AddonInstaller() {
       } else {
         setError(err instanceof Error ? err.message : 'Failed to install addon')
       }
+    }
+  }
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) {
+        setAddonUrl(text)
+      }
+    } catch (err) {
+      console.error('Failed to read clipboard:', err)
     }
   }
 
@@ -63,10 +84,22 @@ export function AddonInstaller() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="addonUrl">Addon URL</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="addonUrl">Addon URL</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={handlePaste}
+              >
+                <ClipboardPaste className="h-3 w-3 mr-1" />
+                Paste
+              </Button>
+            </div>
             <Input
               id="addonUrl"
-              type="url"
+              type="text"
               value={addonUrl}
               onChange={(e) => setAddonUrl(e.target.value)}
               placeholder="https://example.com/addon/manifest.json"

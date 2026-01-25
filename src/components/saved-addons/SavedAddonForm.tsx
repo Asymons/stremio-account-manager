@@ -42,11 +42,7 @@ export function SavedAddonForm({ onSuccess, onCancel }: SavedAddonFormProps) {
         .map((t) => normalizeTagName(t))
         .filter(Boolean)
 
-      await createSavedAddon(
-        formData.name.trim(),
-        formData.installUrl.trim(),
-        tags
-      )
+      await createSavedAddon(formData.name.trim(), formData.installUrl.trim(), tags)
 
       onSuccess()
     } catch (err) {
@@ -59,9 +55,7 @@ export function SavedAddonForm({ onSuccess, onCancel }: SavedAddonFormProps) {
       {/* Error Display */}
       {(formError || error) && (
         <div className="p-3 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-          <p className="text-sm text-red-600 dark:text-red-400">
-            {formError || error}
-          </p>
+          <p className="text-sm text-red-600 dark:text-red-400">{formError || error}</p>
         </div>
       )}
 
@@ -75,9 +69,7 @@ export function SavedAddonForm({ onSuccess, onCancel }: SavedAddonFormProps) {
           type="text"
           placeholder="e.g., Torrentio - RD+AD"
           value={formData.name}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, name: e.target.value }))
-          }
+          onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
           maxLength={100}
           required
         />
@@ -94,11 +86,10 @@ export function SavedAddonForm({ onSuccess, onCancel }: SavedAddonFormProps) {
         <Input
           id="installUrl"
           type="url"
+          inputMode="url"
           placeholder="https://..."
           value={formData.installUrl}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, installUrl: e.target.value }))
-          }
+          onChange={(e) => setFormData((prev) => ({ ...prev, installUrl: e.target.value }))}
           required
         />
         <p className="text-xs text-muted-foreground">
@@ -114,9 +105,7 @@ export function SavedAddonForm({ onSuccess, onCancel }: SavedAddonFormProps) {
           type="text"
           placeholder="e.g., essential, torrent, debrid"
           value={formData.tags}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, tags: e.target.value }))
-          }
+          onChange={(e) => setFormData((prev) => ({ ...prev, tags: e.target.value }))}
         />
         <p className="text-xs text-muted-foreground">
           Comma or space separated tags for organizing saved addons

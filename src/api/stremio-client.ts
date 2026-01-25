@@ -42,6 +42,10 @@ export class StremioClient {
         password,
       })
 
+      if (response.data?.error) {
+        throw new Error(response.data.error.message || 'Login failed')
+      }
+
       if (!response.data?.result?.authKey) {
         throw new Error('Invalid login response - no auth key')
       }
@@ -72,6 +76,10 @@ export class StremioClient {
         update: true,
       })
 
+      if (response.data?.error) {
+        throw new Error(response.data.error.message || 'Failed to get addon collection')
+      }
+
       if (!response.data?.result?.addons) {
         // If no addons, return empty array
         return []
@@ -86,7 +94,9 @@ export class StremioClient {
         if (error.code === 'ERR_NETWORK') {
           throw new Error('Network error - check your internet connection or CORS configuration')
         }
-        throw new Error(error.response?.data?.error || error.message || 'Failed to get addon collection')
+        throw new Error(
+          error.response?.data?.error || error.message || 'Failed to get addon collection'
+        )
       }
       throw error
     }
@@ -103,6 +113,10 @@ export class StremioClient {
         addons,
       })
 
+      if (response.data?.error) {
+        throw new Error(response.data.error.message || 'Failed to set addon collection')
+      }
+
       if (!response.data?.success && response.data?.result?.success === false) {
         throw new Error('Failed to update addon collection')
       }
@@ -114,7 +128,9 @@ export class StremioClient {
         if (error.code === 'ERR_NETWORK') {
           throw new Error('Network error - check your internet connection or CORS configuration')
         }
-        throw new Error(error.response?.data?.error || error.message || 'Failed to set addon collection')
+        throw new Error(
+          error.response?.data?.error || error.message || 'Failed to set addon collection'
+        )
       }
       throw error
     }

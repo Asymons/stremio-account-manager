@@ -1,7 +1,13 @@
-import { installAddon as apiInstallAddon, removeAddon as apiRemoveAddon, getAddons, updateAddons } from '@/api/addons'
+import {
+  installAddon as apiInstallAddon,
+  removeAddon as apiRemoveAddon,
+  getAddons,
+  updateAddons,
+} from '@/api/addons'
 import { loginWithCredentials } from '@/api/auth'
 import { decrypt, encrypt } from '@/lib/encryption'
 import { accountExportSchema } from '@/lib/validation'
+import { toast } from '@/hooks/use-toast'
 import { AccountExport, StremioAccount } from '@/types/account'
 import { AddonDescriptor } from '@/types/addon'
 import localforage from 'localforage'
@@ -26,7 +32,10 @@ interface AccountStore {
   reorderAddons: (accountId: string, newOrder: AddonDescriptor[]) => Promise<void>
   exportAccounts: (includeCredentials: boolean) => string
   importAccounts: (json: string) => Promise<void>
-  updateAccount: (id: string, data: { name: string, authKey?: string, email?: string, password?: string }) => Promise<void>
+  updateAccount: (
+    id: string,
+    data: { name: string; authKey?: string; email?: string; password?: string }
+  ) => Promise<void>
   clearError: () => void
 }
 
@@ -40,7 +49,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       const storedAccounts = await localforage.getItem<StremioAccount[]>(STORAGE_KEY)
       if (storedAccounts && Array.isArray(storedAccounts)) {
         // Convert date strings back to Date objects
-        const accounts = storedAccounts.map(acc => ({
+        const accounts = storedAccounts.map((acc) => ({
           ...acc,
           lastSync: new Date(acc.lastSync),
         }))
@@ -139,20 +148,26 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         status: 'active' as const,
       }
 
-      const accounts = get().accounts.map((acc) =>
-        acc.id === id ? updatedAccount : acc
-      )
+      const accounts = get().accounts.map((acc) => (acc.id === id ? updatedAccount : acc))
 
       set({ accounts })
       await localforage.setItem(STORAGE_KEY, accounts)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to sync account'
+      const account = get().accounts.find((acc) => acc.id === id)
 
       // Mark account as error
       const accounts = get().accounts.map((acc) =>
         acc.id === id ? { ...acc, status: 'error' as const } : acc
       )
       set({ accounts, error: message })
+
+      // Show toast notification
+      toast({
+        variant: 'destructive',
+        title: 'Sync Failed',
+        description: `Unable to sync "${account?.name}". Please check your credentials.`,
+      })
 
       await localforage.setItem(STORAGE_KEY, accounts)
       throw error
@@ -188,6 +203,13 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
           acc.id === account.id ? { ...acc, status: 'error' as const } : acc
         )
         set({ accounts: updatedAccounts })
+
+        // Show toast notification for this account
+        toast({
+          variant: 'destructive',
+          title: 'Sync Failed',
+          description: `Unable to sync "${account.name}". Please check your credentials.`,
+        })
       }
     }
 
@@ -212,9 +234,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         lastSync: new Date(),
       }
 
-      const accounts = get().accounts.map((acc) =>
-        acc.id === accountId ? updatedAccount : acc
-      )
+      const accounts = get().accounts.map((acc) => (acc.id === accountId ? updatedAccount : acc))
 
       set({ accounts })
       await localforage.setItem(STORAGE_KEY, accounts)
@@ -244,9 +264,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         lastSync: new Date(),
       }
 
-      const accounts = get().accounts.map((acc) =>
-        acc.id === accountId ? updatedAccount : acc
-      )
+      const accounts = get().accounts.map((acc) => (acc.id === accountId ? updatedAccount : acc))
 
       set({ accounts })
       await localforage.setItem(STORAGE_KEY, accounts)
@@ -276,9 +294,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         lastSync: new Date(),
       }
 
-      const accounts = get().accounts.map((acc) =>
-        acc.id === accountId ? updatedAccount : acc
-      )
+      const accounts = get().accounts.map((acc) => (acc.id === accountId ? updatedAccount : acc))
 
       set({ accounts })
       await localforage.setItem(STORAGE_KEY, accounts)
@@ -348,12 +364,12 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         throw new Error('Account not found')
       }
 
-      let updatedAccount = { ...account, name: data.name }
+      const updatedAccount = { ...account, name: data.name }
 
       // If credentials changed, re-validate
       if (data.authKey || (data.email && data.password)) {
         let authKey = ''
-        
+
         if (data.authKey) {
           authKey = data.authKey
           updatedAccount.authKey = encrypt(authKey)
@@ -372,16 +388,14 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         updatedAccount.lastSync = new Date()
       }
 
-      const accounts = get().accounts.map((acc) =>
-        acc.id === id ? updatedAccount : acc
-      )
+      const accounts = get().accounts.map((acc) => (acc.id === id ? updatedAccount : acc))
 
       set({ accounts })
       await localforage.setItem(STORAGE_KEY, accounts)
     } catch (error) {
-       const message = error instanceof Error ? error.message : 'Failed to update account'
-       set({ error: message })
-       throw error
+      const message = error instanceof Error ? error.message : 'Failed to update account'
+      set({ error: message })
+      throw error
     } finally {
       set({ loading: false })
     }

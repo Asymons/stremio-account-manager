@@ -10,9 +10,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAddonStore } from '@/store/addonStore'
 import { SavedAddon } from '@/types/saved-addon'
-import { MoreVertical, Pencil, Trash2, X } from 'lucide-react'
+import { Copy, ExternalLink, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { SavedAddonDetails } from './SavedAddonDetails'
+import { useUIStore } from '@/store/uiStore'
+import { useToast } from '@/hooks/use-toast'
+import { maskUrl, getStremioLink } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 interface SavedAddonCardProps {
   savedAddon: SavedAddon
@@ -20,6 +24,8 @@ interface SavedAddonCardProps {
 
 export function SavedAddonCard({ savedAddon }: SavedAddonCardProps) {
   const { deleteSavedAddon } = useAddonStore()
+  const isPrivacyModeEnabled = useUIStore((state) => state.isPrivacyModeEnabled)
+  const { toast } = useToast()
   const [showDetails, setShowDetails] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
@@ -40,12 +46,58 @@ export function SavedAddonCard({ savedAddon }: SavedAddonCardProps) {
     return new Date(date).toLocaleDateString()
   }
 
+  const handleCopyUrl = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(savedAddon.installUrl)
+    toast({
+      title: 'URL Copied',
+      description: 'Addon install URL copied to clipboard',
+    })
+  }
+
+  const handleOpenInStremio = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    window.location.href = getStremioLink(savedAddon.installUrl)
+  }
+
+  const getHealthStatusColor = () => {
+    if (!savedAddon.health) {
+      return 'bg-gray-400' // Unchecked
+    }
+    return savedAddon.health.isOnline ? 'bg-green-500' : 'bg-red-500'
+  }
+
+  const getHealthTooltip = () => {
+    if (!savedAddon.health) {
+      return 'Health not checked'
+    }
+    const status = savedAddon.health.isOnline ? 'Online' : 'Offline'
+    const lastChecked = new Date(savedAddon.health.lastChecked)
+    const timeAgo = getTimeAgo(lastChecked)
+    return `${status}\nLast checked: ${timeAgo}`
+  }
+
+  const getTimeAgo = (date: Date) => {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+    if (seconds < 60) return 'just now'
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes}m ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    return `${days}d ago`
+  }
+
   return (
     <>
       <Card className="flex flex-col">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={`w-2 h-2 rounded-full shrink-0 ${getHealthStatusColor()}`}
+                title={getHealthTooltip()}
+              />
               <CardTitle className="text-lg line-clamp-2">{savedAddon.name}</CardTitle>
               {savedAddon.sourceType === 'cloned-from-account' && (
                 <span className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary shrink-0">
@@ -115,6 +167,29 @@ export function SavedAddonCard({ savedAddon }: SavedAddonCardProps) {
               <p>Created: {formatDate(savedAddon.createdAt)}</p>
               {savedAddon.lastUsed && <p>Last used: {formatDate(savedAddon.lastUsed)}</p>}
             </div>
+
+            {/* URL Display and Actions */}
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                onClick={handleCopyUrl}
+                className="text-[10px] text-muted-foreground truncate font-mono bg-muted/50 px-2 py-1.5 rounded flex-1 flex items-center justify-between gap-2 hover:bg-muted transition-colors group"
+                title="Copy URL"
+              >
+                <span className="truncate">
+                  {isPrivacyModeEnabled ? maskUrl(savedAddon.installUrl) : savedAddon.installUrl}
+                </span>
+                <Copy className="h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={handleOpenInStremio}
+                title="Open in Stremio"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -122,16 +197,8 @@ export function SavedAddonCard({ savedAddon }: SavedAddonCardProps) {
       {/* Details Dialog */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="flex flex-row items-center justify-between">
+          <DialogHeader>
             <DialogTitle>Edit Saved Addon</DialogTitle>
-            <button
-              type="button"
-              onClick={() => setShowDetails(false)}
-              className="p-1 rounded-full hover:bg-accent transition-colors duration-150"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5 text-muted-foreground" />
-            </button>
           </DialogHeader>
           <SavedAddonDetails savedAddon={savedAddon} onClose={() => setShowDetails(false)} />
         </DialogContent>

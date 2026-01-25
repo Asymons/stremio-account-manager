@@ -3,21 +3,23 @@ import { AddonInstaller } from '@/components/addons/AddonInstaller'
 import { ExportDialog } from '@/components/ExportDialog'
 import { ImportDialog } from '@/components/ImportDialog'
 import { Layout } from '@/components/layout/Layout'
+import { Toaster } from '@/components/ui/toaster'
 import { AppRoutes } from '@/routes'
 import { useAccountStore } from '@/store/accountStore'
 import { useAddonStore } from '@/store/addonStore'
+import { useUIStore } from '@/store/uiStore'
 import { useEffect, useState } from 'react'
 
 function App() {
   const initializeAccounts = useAccountStore((state) => state.initialize)
   const initializeAddons = useAddonStore((state) => state.initialize)
+  const initializeUI = useUIStore((state) => state.initialize)
   const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
-    Promise.all([initializeAccounts(), initializeAddons()]).finally(() =>
-      setIsInitialized(true)
-    )
-  }, [initializeAccounts, initializeAddons])
+    initializeUI()
+    Promise.all([initializeAccounts(), initializeAddons()]).finally(() => setIsInitialized(true))
+  }, [initializeAccounts, initializeAddons, initializeUI])
 
   if (!isInitialized) {
     return (
@@ -38,9 +40,9 @@ function App() {
       <AddonInstaller />
       <ExportDialog />
       <ImportDialog />
+      <Toaster />
     </Layout>
   )
 }
 
 export default App
-
