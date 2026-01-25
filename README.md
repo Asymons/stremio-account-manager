@@ -1,5 +1,7 @@
 # Stremio Account Manager
 
+https://stremio-account-manager.pages.dev/
+
 A client-side React SPA for managing multiple Stremio accounts and their addons. Manage 1-10+ accounts with ease, install/remove addons, and sync configurations across your accounts.
 
 > ⚠️ **Disclaimer**: This is an **unofficial tool** and is not affiliated with Stremio. Use at your own risk. Always keep backups of your important data.
