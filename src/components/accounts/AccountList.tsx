@@ -96,7 +96,7 @@ export function AccountList() {
             className="flex-1 sm:flex-none"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Sync All
+            Refresh All
           </Button>
           <Button size="sm" onClick={() => openAddAccountDialog()} className="flex-1 sm:flex-none">
             Add Account
