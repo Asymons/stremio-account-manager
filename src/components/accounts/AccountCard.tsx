@@ -128,7 +128,7 @@ export function AccountCard({ account, isSelected = false, onToggleSelect }: Acc
             <span className="font-medium">{account.addons.length}</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
-            <span className="text-muted-foreground">Last Sync:</span>
+            <span className="text-muted-foreground">Last Refresh:</span>
             <span className="text-sm">{lastSyncText}</span>
           </div>
           {account.status === 'error' && (
