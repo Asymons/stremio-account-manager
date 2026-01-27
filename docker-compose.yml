@@ -1,0 +1,7 @@
+services:
+  app:
+    build: .
+    container_name: stremio-account-manager
+    restart: unless-stopped
+    ports:
+      - "8080:80"
