@@ -9,14 +9,9 @@ interface SortableAddonItemProps {
 }
 
 export function SortableAddonItem({ addon, id }: SortableAddonItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -38,6 +33,7 @@ export function SortableAddonItem({ addon, id }: SortableAddonItemProps) {
         {...attributes}
         {...listeners}
         className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
+        style={{ touchAction: 'none' }}
       >
         <GripVertical className="h-5 w-5" />
       </div>
@@ -57,18 +53,14 @@ export function SortableAddonItem({ addon, id }: SortableAddonItemProps) {
       {/* Addon Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="font-medium text-sm truncate">
-            {addon.manifest.name}
-          </h3>
+          <h3 className="font-medium text-sm truncate">{addon.manifest.name}</h3>
           {(addon.flags?.protected || addon.flags?.official) && (
             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded flex-shrink-0">
               {addon.flags?.protected ? 'Protected' : 'Official'}
             </span>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          v{addon.manifest.version}
-        </p>
+        <p className="text-xs text-muted-foreground">v{addon.manifest.version}</p>
       </div>
     </div>
   )

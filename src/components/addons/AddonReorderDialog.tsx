@@ -3,7 +3,8 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -14,7 +15,14 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { AddonDescriptor } from '@/types/addon'
 import { SortableAddonItem } from './SortableAddonItem'
@@ -47,7 +55,16 @@ export function AddonReorderDialog({
   }, [open, addons])
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 5, // Prevent accidental clicks from triggering drag
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        distance: 5, // Prevent accidental touches from triggering drag
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -105,33 +122,20 @@ export function AddonReorderDialog({
             >
               <div className="space-y-2">
                 {items.map((addon) => (
-                  <SortableAddonItem
-                    key={addon.manifest.id}
-                    id={addon.manifest.id}
-                    addon={addon}
-                  />
+                  <SortableAddonItem key={addon.manifest.id} id={addon.manifest.id} addon={addon} />
                 ))}
               </div>
             </SortableContext>
           </DndContext>
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            disabled={saving}
-          >
+          <Button variant="outline" onClick={handleCancel} disabled={saving}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-          >
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </Button>
         </DialogFooter>
