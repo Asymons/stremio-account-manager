@@ -96,7 +96,7 @@ Browsers treat `localhost` as a secure context even over HTTP, so encryption wor
 
 #### Network Access from Other Devices
 
-If you need to access the app from other devices (phone, tablet, another computer), you have three options:
+If you need to access the app from other devices (phone, tablet, another computer), you have two options:
 
 ##### Option 1: Use a Reverse Proxy (Recommended)
 
