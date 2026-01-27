@@ -31,3 +31,7 @@ export function maskUrl(url: string): string {
 export function getStremioLink(url: string): string {
   return url.replace(/^https?:\/\//, 'stremio://')
 }
+
+export function getAddonConfigureUrl(installUrl: string): string {
+  return installUrl.replace('manifest.json', 'configure')
+}

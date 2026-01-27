@@ -58,3 +58,6 @@ coverage
 secrets.json
 config.local.json
 *.secret
+
+# Claude Code files
+CLAUDE.local.md

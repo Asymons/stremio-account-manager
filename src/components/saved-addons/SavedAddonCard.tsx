@@ -10,11 +10,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useToast } from '@/hooks/use-toast'
-import { getStremioLink, maskUrl } from '@/lib/utils'
+import { maskUrl, getAddonConfigureUrl } from '@/lib/utils'
 import { useAddonStore } from '@/store/addonStore'
 import { useUIStore } from '@/store/uiStore'
 import { SavedAddon } from '@/types/saved-addon'
-import { Copy, ExternalLink, MoreVertical, Pencil, RefreshCw, Trash2 } from 'lucide-react'
+import { Copy, MoreVertical, Pencil, RefreshCw, Settings, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { SavedAddonDetails } from './SavedAddonDetails'
 
@@ -60,9 +60,10 @@ export function SavedAddonCard({ savedAddon, latestVersion, onUpdate }: SavedAdd
     })
   }
 
-  const handleOpenInStremio = (e: React.MouseEvent) => {
+  const handleOpenConfiguration = (e: React.MouseEvent) => {
     e.stopPropagation()
-    window.location.href = getStremioLink(savedAddon.installUrl)
+    const configUrl = getAddonConfigureUrl(savedAddon.installUrl)
+    window.open(configUrl, '_blank', 'noopener,noreferrer')
   }
 
   const getHealthStatusColor = () => {
@@ -205,15 +206,17 @@ export function SavedAddonCard({ savedAddon, latestVersion, onUpdate }: SavedAdd
                 </span>
                 <Copy className="h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
               </button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                onClick={handleOpenInStremio}
-                title="Open in Stremio"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+              {savedAddon.manifest.behaviorHints?.configurable && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={handleOpenConfiguration}
+                  title="Configure Addon"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              )}
             </div>
 
             {/* Update Button */}
