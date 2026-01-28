@@ -57,7 +57,7 @@ export function AddonDebridDialog({
 
   // Decrypt keys when dialog opens
   useEffect(() => {
-    if (open && encryptionKey) {
+    if (open && encryptionKey && debridKeys.length > 0) {
       const decryptKeys = async () => {
         const decrypted: Record<string, string> = {}
         for (const key of debridKeys) {
@@ -74,6 +74,7 @@ export function AddonDebridDialog({
         const currentKey = getCurrentDebridKey(addon.transportUrl)
 
         if (currentKey && currentService) {
+          // Find matching key by service and decrypted value
           const matchingKey = debridKeys.find(
             (key) => key.service === currentService && decrypted[key.id] === currentKey
           )
@@ -100,6 +101,7 @@ export function AddonDebridDialog({
     try {
       if (selectedKeyId === null) {
         // Remove debrid
+        console.log('[AddonDebridDialog] Removing debrid from addon:', addon.manifest.id)
         await removeDebridFromAddon(accountId, addon.manifest.id)
         toast({
           title: 'Success',
@@ -107,10 +109,16 @@ export function AddonDebridDialog({
         })
       } else {
         // Apply debrid key
+        console.log('[AddonDebridDialog] Applying debrid key:', {
+          addonId: addon.manifest.id,
+          keyId: selectedKeyId,
+          currentUrl: addon.transportUrl,
+        })
         await applyDebridKeyToAddon(accountId, addon.manifest.id, selectedKeyId)
         const key = debridKeys.find((k) => k.id === selectedKeyId)
         const serviceName = key?.service === 'realdebrid' ? 'Real-Debrid' : 'TorBox'
         const label = key?.label ? ` (${key.label})` : ''
+        console.log('[AddonDebridDialog] Debrid key applied successfully')
         toast({
           title: 'Success',
           description: `Addon configured with ${serviceName}${label}`,
@@ -118,6 +126,7 @@ export function AddonDebridDialog({
       }
       onOpenChange(false)
     } catch (error) {
+      console.error('[AddonDebridDialog] Failed to apply debrid:', error)
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to configure debrid',
@@ -137,10 +146,14 @@ export function AddonDebridDialog({
     return serviceType === 'realdebrid' ? 'Real-Debrid' : 'TorBox'
   }
 
+  // Check if there are changes to apply
+  // Wait for keys to be decrypted before enabling the button
+  const keysDecrypted = Object.keys(decryptedKeys).length === debridKeys.length
   const hasChanges =
-    (selectedKeyId === null && currentDebridKey !== null) ||
-    (selectedKeyId !== null &&
-      (!currentDebridKey || decryptedKeys[selectedKeyId] !== currentDebridKey))
+    keysDecrypted &&
+    ((selectedKeyId === null && currentDebridKey !== null) ||
+      (selectedKeyId !== null &&
+        (!currentDebridKey || decryptedKeys[selectedKeyId] !== currentDebridKey)))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

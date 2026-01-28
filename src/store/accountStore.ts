@@ -752,6 +752,12 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         throw new Error('Addon not found')
       }
 
+      console.log('[Store] Applying debrid key to addon:', {
+        addonId,
+        addonName: addon.manifest.name,
+        originalUrl: addon.transportUrl,
+      })
+
       // Find the API key
       const apiKey = (account.apiKeys || []).find((k) => k.id === apiKeyId)
       if (!apiKey) {
@@ -760,12 +766,15 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
 
       // Decrypt the API key
       const decryptedKey = await decrypt(apiKey.apiKey, getEncryptionKey())
+      console.log('[Store] Decrypted API key for service:', apiKey.service)
 
       // Apply the debrid key to the addon
       const updatedAddon = applyDebridKeyToAddon(addon, {
         ...apiKey,
         apiKey: decryptedKey,
       })
+
+      console.log('[Store] Updated addon URL:', updatedAddon.transportUrl)
 
       // Update the addon list
       const updatedAddons = account.addons.map((a) =>
@@ -774,7 +783,9 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
 
       // Sync to Stremio API
       const authKey = await decrypt(account.authKey, getEncryptionKey())
+      console.log('[Store] Syncing to Stremio API...')
       await updateAddons(authKey, updatedAddons)
+      console.log('[Store] Sync successful')
 
       // Update local state
       const updatedAccount = {
@@ -787,7 +798,9 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
 
       set({ accounts })
       await localforage.setItem(STORAGE_KEY, accounts)
+      console.log('[Store] Local state and storage updated')
     } catch (error) {
+      console.error('[Store] Error applying debrid key:', error)
       const message = error instanceof Error ? error.message : 'Failed to apply debrid key to addon'
       set({ error: message })
       throw error
