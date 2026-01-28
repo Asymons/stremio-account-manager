@@ -27,6 +27,15 @@ export interface SavedAddonExport extends Omit<SavedAddon, 'createdAt' | 'update
   lastUsed?: string
 }
 
+export interface ApiKeyExport {
+  id: string
+  service: string
+  apiKey: string // Plain text in export (if credentials included)
+  label?: string
+  metadata?: Record<string, unknown>
+  createdAt: string
+}
+
 export interface AccountExport {
   version: string
   exportedAt: string
@@ -36,6 +45,7 @@ export interface AccountExport {
     authKey?: string // User decides whether to include
     password?: string // User decides whether to include
     addons: AddonDescriptor[]
+    apiKeys?: ApiKeyExport[] // API keys (if credentials included)
   }>
   savedAddons?: SavedAddonExport[]
 }
