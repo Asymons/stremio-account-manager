@@ -49,6 +49,12 @@ export function AddonDebridDialog({
   const currentDebridService = getCurrentDebridService(addon.transportUrl)
   const currentDebridKey = getCurrentDebridKey(addon.transportUrl)
 
+  // Create stable key IDs string for dependency comparison
+  const keyIds = debridKeys
+    .map((k) => k.id)
+    .sort()
+    .join(',')
+
   // Decrypt keys when dialog opens
   useEffect(() => {
     if (open && encryptionKey) {
@@ -64,9 +70,12 @@ export function AddonDebridDialog({
         setDecryptedKeys(decrypted)
 
         // Set initial selection based on current addon config
-        if (currentDebridKey && currentDebridService) {
+        const currentService = getCurrentDebridService(addon.transportUrl)
+        const currentKey = getCurrentDebridKey(addon.transportUrl)
+
+        if (currentKey && currentService) {
           const matchingKey = debridKeys.find(
-            (key) => key.service === currentDebridService && decrypted[key.id] === currentDebridKey
+            (key) => key.service === currentService && decrypted[key.id] === currentKey
           )
           if (matchingKey) {
             setSelectedKeyId(matchingKey.id)
@@ -79,8 +88,12 @@ export function AddonDebridDialog({
         }
       }
       decryptKeys()
+    } else if (!open) {
+      setDecryptedKeys({})
+      setSelectedKeyId(null)
     }
-  }, [open, debridKeys, encryptionKey, currentDebridKey, currentDebridService])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, keyIds, encryptionKey, addon.transportUrl])
 
   const handleApply = async () => {
     setLoading(true)

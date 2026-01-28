@@ -53,9 +53,15 @@ export function DebridKeysDialog({ open, onOpenChange, accountId }: DebridKeysDi
   const [deleteKeyId, setDeleteKeyId] = useState<string | null>(null)
   const [decryptedKeys, setDecryptedKeys] = useState<Record<string, string>>({})
 
-  // Decrypt keys when dialog opens
+  // Create stable key IDs string for dependency comparison
+  const keyIds = debridKeys
+    .map((k) => k.id)
+    .sort()
+    .join(',')
+
+  // Decrypt keys when dialog opens or keys change
   useEffect(() => {
-    if (open && encryptionKey) {
+    if (open && encryptionKey && debridKeys.length > 0) {
       const decryptKeys = async () => {
         const decrypted: Record<string, string> = {}
         for (const key of debridKeys) {
@@ -68,8 +74,10 @@ export function DebridKeysDialog({ open, onOpenChange, accountId }: DebridKeysDi
         setDecryptedKeys(decrypted)
       }
       decryptKeys()
+    } else if (!open || debridKeys.length === 0) {
+      setDecryptedKeys({})
     }
-  }, [open, debridKeys, encryptionKey])
+  }, [open, keyIds, encryptionKey])
 
   // Reset form when dialog opens/closes
   useEffect(() => {

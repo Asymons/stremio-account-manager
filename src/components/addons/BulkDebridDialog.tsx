@@ -50,9 +50,16 @@ export function BulkDebridDialog({
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null)
   const [decryptedKeys, setDecryptedKeys] = useState<Record<string, string>>({})
 
+  // Create stable key IDs string for dependency comparison
+  const keyIds = debridKeys
+    .map((k) => k.id)
+    .sort()
+    .join(',')
+  const hasKeys = debridKeys.length > 0
+
   // Decrypt keys when dialog opens
   useEffect(() => {
-    if (open && encryptionKey) {
+    if (open && encryptionKey && hasKeys) {
       const decryptKeys = async () => {
         const decrypted: Record<string, string> = {}
         for (const key of debridKeys) {
@@ -65,17 +72,21 @@ export function BulkDebridDialog({
         setDecryptedKeys(decrypted)
       }
       decryptKeys()
+    } else if (!open || !hasKeys) {
+      setDecryptedKeys({})
     }
-  }, [open, debridKeys, encryptionKey])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, keyIds, encryptionKey])
 
   // Reset state when dialog opens/closes
   useEffect(() => {
     if (open) {
       setMode('apply')
-      setSelectedKeyId(debridKeys.length > 0 ? debridKeys[0].id : null)
+      setSelectedKeyId(hasKeys ? debridKeys[0].id : null)
       setResult(null)
     }
-  }, [open, debridKeys])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, keyIds])
 
   const handleExecute = async () => {
     setLoading(true)
