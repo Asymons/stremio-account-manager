@@ -57,16 +57,22 @@ export function parseTorrentioUrl(url: string): TorrentioConfig {
     return config
   }
 
+  // URL-decode the config segment first to handle %7C (encoded pipes) and other encoded chars
+  const decodedSegment = decodeURIComponent(configSegment)
+  console.log('[parseTorrentioUrl] Decoded config segment:', decodedSegment)
+
   // Parse pipe-separated parameters
-  const params = configSegment.split('|')
+  const params = decodedSegment.split('|')
 
   for (const param of params) {
     if (param.startsWith('qualityfilter=')) {
       config.qualityFilter = param.substring('qualityfilter='.length)
     } else if (param.startsWith('realdebrid=')) {
+      // Only keep the last realdebrid parameter if there are duplicates
       config.debridService = 'realdebrid'
       config.debridKey = param.substring('realdebrid='.length)
     } else if (param.startsWith('torbox=')) {
+      // Only keep the last torbox parameter if there are duplicates
       config.debridService = 'torbox'
       config.debridKey = param.substring('torbox='.length)
     } else if (param) {
@@ -75,6 +81,7 @@ export function parseTorrentioUrl(url: string): TorrentioConfig {
     }
   }
 
+  console.log('[parseTorrentioUrl] Parsed config:', config)
   return config
 }
 
@@ -101,10 +108,12 @@ export function buildTorrentioUrl(config: TorrentioConfig): string {
   // Add other params
   params.push(...config.otherParams)
 
-  // Build the URL
+  // Build the URL - join params with pipe, then URL-encode the entire segment
   const configSegment = params.length > 0 ? params.join('|') : ''
-  const path = configSegment ? `/${configSegment}/manifest.json` : '/manifest.json'
+  const encodedSegment = configSegment ? encodeURIComponent(configSegment) : ''
+  const path = encodedSegment ? `/${encodedSegment}/manifest.json` : '/manifest.json'
 
+  console.log('[buildTorrentioUrl] Built URL:', `${config.baseUrl}${path}`)
   return `${config.baseUrl}${path}`
 }
 
