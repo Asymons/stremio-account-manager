@@ -64,6 +64,16 @@ export const savedAddonSchema = z.object({
     .optional(),
 })
 
+// API key schema for export/import
+export const apiKeyExportSchema = z.object({
+  id: z.string(),
+  service: z.string(),
+  apiKey: z.string(), // Plain text in export (if credentials included)
+  label: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  createdAt: z.string(),
+})
+
 export const accountExportSchema = z.object({
   version: z.string(),
   exportedAt: z.string(),
@@ -74,6 +84,7 @@ export const accountExportSchema = z.object({
       authKey: z.string().optional(),
       password: z.string().optional(),
       addons: z.array(addonDescriptorSchema),
+      apiKeys: z.array(apiKeyExportSchema).optional(),
     })
   ),
   savedAddons: z.array(savedAddonSchema).optional(),

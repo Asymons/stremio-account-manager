@@ -9,12 +9,23 @@ import { useAccountStore } from '@/store/accountStore'
 import { useAddonStore } from '@/store/addonStore'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
-import { ArrowLeft, GripVertical, Library, RefreshCw } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { ArrowLeft, GripVertical, Library, RefreshCw, Key, MoreVertical } from 'lucide-react'
+import { useCallback, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AddonCard } from './AddonCard'
 import { AddonReorderDialog } from './AddonReorderDialog'
 import { InstallSavedAddonDialog } from './InstallSavedAddonDialog'
+import { DebridKeysDialog } from '@/components/accounts/DebridKeysDialog'
+import { BulkDebridDialog } from './BulkDebridDialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu'
+import { getSupportedAddonTypes, findAddonsByType } from '@/lib/debrid-utils'
 
 interface AddonListProps {
   accountId: string
@@ -27,6 +38,9 @@ export function AddonList({ accountId }: AddonListProps) {
   const openAddAddonDialog = useUIStore((state) => state.openAddAddonDialog)
   const [reorderDialogOpen, setReorderDialogOpen] = useState(false)
   const [installFromLibraryOpen, setInstallFromLibraryOpen] = useState(false)
+  const [debridKeysDialogOpen, setDebridKeysDialogOpen] = useState(false)
+  const [bulkDebridDialogOpen, setBulkDebridDialogOpen] = useState(false)
+  const [bulkDebridAddonType, setBulkDebridAddonType] = useState<string>('')
   const [checkingUpdates, setCheckingUpdates] = useState(false)
   const latestVersions = useAddonStore((state) => state.latestVersions)
   const updateLatestVersions = useAccountStore((state) => state.updateLatestVersions)
@@ -42,6 +56,20 @@ export function AddonList({ accountId }: AddonListProps) {
     const latest = latestVersions[addon.manifest.id]
     return latest && latest !== addon.manifest.version
   })
+
+  // Get counts of addons by type for bulk operations
+  const addonTypeCounts = useMemo(() => {
+    const types = getSupportedAddonTypes()
+    return types.map((type) => ({
+      ...type,
+      count: findAddonsByType(addons, type.key).length,
+    }))
+  }, [addons])
+
+  const handleOpenBulkDebrid = (addonTypeKey: string) => {
+    setBulkDebridAddonType(addonTypeKey)
+    setBulkDebridDialogOpen(true)
+  }
 
   const handleCheckUpdates = useCallback(async () => {
     if (!account || !encryptionKey) return
@@ -212,6 +240,39 @@ export function AddonList({ accountId }: AddonListProps) {
             </Button>
           )}
           <Button
+            onClick={() => setDebridKeysDialogOpen(true)}
+            variant="outline"
+            size="sm"
+            className="flex-1 sm:flex-none"
+          >
+            <Key className="h-4 w-4" />
+            <span className="hidden xs:inline">API Keys</span>
+            <span className="inline xs:hidden">Keys</span>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+                <MoreVertical className="h-4 w-4" />
+                <span className="hidden xs:inline ml-2">Bulk</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Bulk Debrid Operations</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {addonTypeCounts.filter((type) => type.count > 0).length === 0 ? (
+                <DropdownMenuItem disabled>No supported addons</DropdownMenuItem>
+              ) : (
+                addonTypeCounts
+                  .filter((type) => type.count > 0)
+                  .map((type) => (
+                    <DropdownMenuItem key={type.key} onClick={() => handleOpenBulkDebrid(type.key)}>
+                      {type.name} ({type.count})
+                    </DropdownMenuItem>
+                  ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
             onClick={() => setReorderDialogOpen(true)}
             disabled={addons.length === 0}
             variant="outline"
@@ -280,6 +341,19 @@ export function AddonList({ accountId }: AddonListProps) {
           onOpenChange={setInstallFromLibraryOpen}
         />
       )}
+
+      <DebridKeysDialog
+        accountId={accountId}
+        open={debridKeysDialogOpen}
+        onOpenChange={setDebridKeysDialogOpen}
+      />
+
+      <BulkDebridDialog
+        accountId={accountId}
+        addonType={bulkDebridAddonType}
+        open={bulkDebridDialogOpen}
+        onOpenChange={setBulkDebridDialogOpen}
+      />
     </div>
   )
 }

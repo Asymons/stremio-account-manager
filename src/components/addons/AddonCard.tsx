@@ -23,11 +23,14 @@ import { getStremioLink, maskUrl } from '@/lib/utils'
 import { useAddonStore } from '@/store/addonStore'
 import { useUIStore } from '@/store/uiStore'
 import { AddonDescriptor } from '@/types/addon'
-import { Copy, ExternalLink, RefreshCw, Settings } from 'lucide-react'
+import { Copy, ExternalLink, RefreshCw, Settings, Key } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CinemetaConfigurationDialog } from './CinemetaConfigurationDialog'
 import { isCinemetaAddon, detectAllPatches } from '@/lib/cinemeta-utils'
 import { CinemetaManifest } from '@/types/cinemeta'
+import { isDebridSupportedAddon } from '@/lib/debrid-utils'
+import { getCurrentDebridService } from '@/lib/addons/torrentio-utils'
+import { AddonDebridDialog } from './AddonDebridDialog'
 
 interface AddonCardProps {
   addon: AddonDescriptor
@@ -59,6 +62,7 @@ export function AddonCard({
   const [saveTags, setSaveTags] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [showConfigDialog, setShowConfigDialog] = useState(false)
+  const [showDebridDialog, setShowDebridDialog] = useState(false)
 
   const handleRemove = () => {
     setShowRemoveDialog(true)
@@ -95,6 +99,16 @@ export function AddonCard({
       patches.metaResourcePatched
     return hasAnyPatches ? patches : null
   }, [isCinemeta, addon.manifest])
+
+  const isDebridSupported = useMemo(
+    () => isDebridSupportedAddon(addon.transportUrl),
+    [addon.transportUrl]
+  )
+
+  const currentDebridService = useMemo(
+    () => (isDebridSupported ? getCurrentDebridService(addon.transportUrl) : null),
+    [isDebridSupported, addon.transportUrl]
+  )
 
   const openSaveModal = () => {
     setSaveName(addon.manifest.name)
@@ -195,6 +209,11 @@ export function AddonCard({
                     Patched
                   </span>
                 )}
+                {currentDebridService && (
+                  <span className="ml-2 text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 px-2 py-1 rounded-md">
+                    {currentDebridService === 'realdebrid' ? 'RD' : 'TB'}
+                  </span>
+                )}
               </CardTitle>
               <CardDescription className="text-xs flex items-center gap-2">
                 v{addon.manifest.version}
@@ -255,6 +274,18 @@ export function AddonCard({
             >
               <Settings className="h-4 w-4 mr-2" />
               Configure
+            </Button>
+          )}
+          {isDebridSupported && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowDebridDialog(true)}
+              disabled={loading}
+              className="w-full"
+            >
+              <Key className="h-4 w-4 mr-2" />
+              {currentDebridService ? 'Update' : 'Configure'} Debrid
             </Button>
           )}
           {canUpdate && (
@@ -347,6 +378,16 @@ export function AddonCard({
           addon={addon}
           accountId={accountId}
           accountAuthKey={accountAuthKey}
+        />
+      )}
+
+      {/* Debrid Configuration Dialog */}
+      {isDebridSupported && (
+        <AddonDebridDialog
+          open={showDebridDialog}
+          onOpenChange={setShowDebridDialog}
+          addon={addon}
+          accountId={accountId}
         />
       )}
     </>

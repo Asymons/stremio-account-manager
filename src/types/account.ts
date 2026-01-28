@@ -1,5 +1,6 @@
 import { AddonDescriptor } from './addon'
 import { SavedAddon } from './saved-addon'
+import { ApiKey } from './debrid'
 
 export type AccountStatus = 'active' | 'error'
 
@@ -10,6 +11,7 @@ export interface StremioAccount {
   authKey: string // Encrypted
   password?: string // Encrypted (optional)
   addons: AddonDescriptor[]
+  apiKeys?: ApiKey[] // Generic API keys (debrid, TMDB, Trakt, etc.)
   lastSync: Date
   status: AccountStatus
 }

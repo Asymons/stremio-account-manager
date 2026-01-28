@@ -14,6 +14,8 @@ import { toast } from '@/hooks/use-toast'
 import { AccountExport, StremioAccount } from '@/types/account'
 import { AddonDescriptor } from '@/types/addon'
 import { SavedAddon } from '@/types/saved-addon'
+import { ApiKeyInput } from '@/types/debrid'
+import { applyDebridKeyToAddon, removeDebridFromAddon, findAddonsByType } from '@/lib/debrid-utils'
 import localforage from 'localforage'
 import { create } from 'zustand'
 
@@ -60,6 +62,26 @@ interface AccountStore {
   ) => Promise<void>
   clearError: () => void
   reset: () => void
+
+  // API key management
+  addApiKey: (accountId: string, keyInput: ApiKeyInput) => Promise<string>
+  updateApiKey: (accountId: string, keyId: string, keyInput: ApiKeyInput) => Promise<void>
+  removeApiKey: (accountId: string, keyId: string) => Promise<void>
+
+  // Per-addon debrid configuration
+  applyDebridKeyToAddon: (accountId: string, addonId: string, apiKeyId: string) => Promise<void>
+  removeDebridFromAddon: (accountId: string, addonId: string) => Promise<void>
+
+  // Bulk operations
+  bulkApplyDebridKey: (
+    accountId: string,
+    addonType: string,
+    apiKeyId: string
+  ) => Promise<{ success: number; failed: number }>
+  bulkRemoveDebrid: (
+    accountId: string,
+    addonType: string
+  ) => Promise<{ success: number; failed: number }>
 }
 
 export const useAccountStore = create<AccountStore>((set, get) => ({
@@ -76,6 +98,10 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
         const accounts = storedAccounts.map((acc) => ({
           ...acc,
           lastSync: new Date(acc.lastSync),
+          apiKeys: acc.apiKeys?.map((key) => ({
+            ...key,
+            createdAt: new Date(key.createdAt),
+          })),
         }))
         set({ accounts })
       }
@@ -401,6 +427,16 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
               ...addon,
               manifest: sanitizeAddonManifest(addon.manifest),
             })),
+            apiKeys:
+              includeCredentials && acc.apiKeys
+                ? await Promise.all(
+                    acc.apiKeys.map(async (key) => ({
+                      ...key,
+                      apiKey: await decrypt(key.apiKey, getEncryptionKey()),
+                      createdAt: key.createdAt.toISOString(),
+                    }))
+                  )
+                : undefined,
           }))
         ),
         savedAddons: savedAddons.length > 0 ? savedAddons : undefined,
@@ -428,6 +464,16 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
               ...addon,
               manifest: sanitizeAddonManifest(addon.manifest),
             })),
+            apiKeys:
+              includeCredentials && acc.apiKeys
+                ? await Promise.all(
+                    acc.apiKeys.map(async (key) => ({
+                      ...key,
+                      apiKey: await decrypt(key.apiKey, getEncryptionKey()),
+                      createdAt: key.createdAt.toISOString(),
+                    }))
+                  )
+                : undefined,
           }))
         ),
       }
@@ -455,6 +501,15 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
             ...addon,
             manifest: sanitizeAddonManifest(addon.manifest),
           })),
+          apiKeys: acc.apiKeys
+            ? await Promise.all(
+                acc.apiKeys.map(async (key) => ({
+                  ...key,
+                  apiKey: await encrypt(key.apiKey, getEncryptionKey()),
+                  createdAt: new Date(key.createdAt),
+                }))
+              )
+            : undefined,
           lastSync: new Date(),
           status: 'active',
         }))
@@ -564,5 +619,363 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
 
   reset: () => {
     set({ accounts: [], loading: false, error: null })
+  },
+
+  // API key management
+  addApiKey: async (accountId, keyInput) => {
+    set({ loading: true, error: null })
+    try {
+      const account = get().accounts.find((acc) => acc.id === accountId)
+      if (!account) {
+        throw new Error('Account not found')
+      }
+
+      // Encrypt the API key
+      const encryptedKey = await encrypt(keyInput.apiKey, getEncryptionKey())
+
+      // Create new API key object
+      const newKey = {
+        id: crypto.randomUUID(),
+        service: keyInput.service,
+        apiKey: encryptedKey,
+        label: keyInput.label,
+        metadata: keyInput.metadata,
+        createdAt: new Date(),
+      }
+
+      // Add to account
+      const updatedAccount = {
+        ...account,
+        apiKeys: [...(account.apiKeys || []), newKey],
+      }
+
+      const accounts = get().accounts.map((acc) => (acc.id === accountId ? updatedAccount : acc))
+
+      set({ accounts })
+      await localforage.setItem(STORAGE_KEY, accounts)
+
+      return newKey.id
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to add API key'
+      set({ error: message })
+      throw error
+    } finally {
+      set({ loading: false })
+    }
+  },
+
+  updateApiKey: async (accountId, keyId, keyInput) => {
+    set({ loading: true, error: null })
+    try {
+      const account = get().accounts.find((acc) => acc.id === accountId)
+      if (!account) {
+        throw new Error('Account not found')
+      }
+
+      const apiKeys = account.apiKeys || []
+      const keyIndex = apiKeys.findIndex((k) => k.id === keyId)
+      if (keyIndex === -1) {
+        throw new Error('API key not found')
+      }
+
+      // Encrypt the API key
+      const encryptedKey = await encrypt(keyInput.apiKey, getEncryptionKey())
+
+      // Update the key
+      const updatedKeys = [...apiKeys]
+      updatedKeys[keyIndex] = {
+        ...updatedKeys[keyIndex],
+        service: keyInput.service,
+        apiKey: encryptedKey,
+        label: keyInput.label,
+        metadata: keyInput.metadata,
+      }
+
+      const updatedAccount = {
+        ...account,
+        apiKeys: updatedKeys,
+      }
+
+      const accounts = get().accounts.map((acc) => (acc.id === accountId ? updatedAccount : acc))
+
+      set({ accounts })
+      await localforage.setItem(STORAGE_KEY, accounts)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update API key'
+      set({ error: message })
+      throw error
+    } finally {
+      set({ loading: false })
+    }
+  },
+
+  removeApiKey: async (accountId, keyId) => {
+    set({ loading: true, error: null })
+    try {
+      const account = get().accounts.find((acc) => acc.id === accountId)
+      if (!account) {
+        throw new Error('Account not found')
+      }
+
+      const updatedKeys = (account.apiKeys || []).filter((k) => k.id !== keyId)
+
+      const updatedAccount = {
+        ...account,
+        apiKeys: updatedKeys,
+      }
+
+      const accounts = get().accounts.map((acc) => (acc.id === accountId ? updatedAccount : acc))
+
+      set({ accounts })
+      await localforage.setItem(STORAGE_KEY, accounts)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to remove API key'
+      set({ error: message })
+      throw error
+    } finally {
+      set({ loading: false })
+    }
+  },
+
+  // Per-addon debrid configuration
+  applyDebridKeyToAddon: async (accountId, addonId, apiKeyId) => {
+    set({ loading: true, error: null })
+    try {
+      const account = get().accounts.find((acc) => acc.id === accountId)
+      if (!account) {
+        throw new Error('Account not found')
+      }
+
+      // Find the addon
+      const addon = account.addons.find((a) => a.manifest.id === addonId)
+      if (!addon) {
+        throw new Error('Addon not found')
+      }
+
+      // Find the API key
+      const apiKey = (account.apiKeys || []).find((k) => k.id === apiKeyId)
+      if (!apiKey) {
+        throw new Error('API key not found')
+      }
+
+      // Decrypt the API key
+      const decryptedKey = await decrypt(apiKey.apiKey, getEncryptionKey())
+
+      // Apply the debrid key to the addon
+      const updatedAddon = applyDebridKeyToAddon(addon, {
+        ...apiKey,
+        apiKey: decryptedKey,
+      })
+
+      // Update the addon list
+      const updatedAddons = account.addons.map((a) =>
+        a.manifest.id === addonId ? updatedAddon : a
+      )
+
+      // Sync to Stremio API
+      const authKey = await decrypt(account.authKey, getEncryptionKey())
+      await updateAddons(authKey, updatedAddons)
+
+      // Update local state
+      const updatedAccount = {
+        ...account,
+        addons: updatedAddons,
+        lastSync: new Date(),
+      }
+
+      const accounts = get().accounts.map((acc) => (acc.id === accountId ? updatedAccount : acc))
+
+      set({ accounts })
+      await localforage.setItem(STORAGE_KEY, accounts)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to apply debrid key to addon'
+      set({ error: message })
+      throw error
+    } finally {
+      set({ loading: false })
+    }
+  },
+
+  removeDebridFromAddon: async (accountId, addonId) => {
+    set({ loading: true, error: null })
+    try {
+      const account = get().accounts.find((acc) => acc.id === accountId)
+      if (!account) {
+        throw new Error('Account not found')
+      }
+
+      // Find the addon
+      const addon = account.addons.find((a) => a.manifest.id === addonId)
+      if (!addon) {
+        throw new Error('Addon not found')
+      }
+
+      // Remove debrid from the addon
+      const updatedAddon = removeDebridFromAddon(addon)
+
+      // Update the addon list
+      const updatedAddons = account.addons.map((a) =>
+        a.manifest.id === addonId ? updatedAddon : a
+      )
+
+      // Sync to Stremio API
+      const authKey = await decrypt(account.authKey, getEncryptionKey())
+      await updateAddons(authKey, updatedAddons)
+
+      // Update local state
+      const updatedAccount = {
+        ...account,
+        addons: updatedAddons,
+        lastSync: new Date(),
+      }
+
+      const accounts = get().accounts.map((acc) => (acc.id === accountId ? updatedAccount : acc))
+
+      set({ accounts })
+      await localforage.setItem(STORAGE_KEY, accounts)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to remove debrid from addon'
+      set({ error: message })
+      throw error
+    } finally {
+      set({ loading: false })
+    }
+  },
+
+  // Bulk operations
+  bulkApplyDebridKey: async (accountId, addonType, apiKeyId) => {
+    set({ loading: true, error: null })
+    let successCount = 0
+    let failedCount = 0
+
+    try {
+      const account = get().accounts.find((acc) => acc.id === accountId)
+      if (!account) {
+        throw new Error('Account not found')
+      }
+
+      // Find the API key
+      const apiKey = (account.apiKeys || []).find((k) => k.id === apiKeyId)
+      if (!apiKey) {
+        throw new Error('API key not found')
+      }
+
+      // Decrypt the API key
+      const decryptedKey = await decrypt(apiKey.apiKey, getEncryptionKey())
+
+      // Find all addons of the specified type
+      const targetAddons = findAddonsByType(account.addons, addonType)
+
+      if (targetAddons.length === 0) {
+        throw new Error(`No addons found of type: ${addonType}`)
+      }
+
+      // Apply debrid key to each addon
+      const updatedAddons = account.addons.map((addon) => {
+        const isTarget = targetAddons.some((t) => t.manifest.id === addon.manifest.id)
+        if (!isTarget) {
+          return addon
+        }
+
+        try {
+          const updated = applyDebridKeyToAddon(addon, {
+            ...apiKey,
+            apiKey: decryptedKey,
+          })
+          successCount++
+          return updated
+        } catch (error) {
+          console.error(`Failed to apply debrid to addon ${addon.manifest.id}:`, error)
+          failedCount++
+          return addon
+        }
+      })
+
+      // Sync to Stremio API
+      const authKey = await decrypt(account.authKey, getEncryptionKey())
+      await updateAddons(authKey, updatedAddons)
+
+      // Update local state
+      const updatedAccount = {
+        ...account,
+        addons: updatedAddons,
+        lastSync: new Date(),
+      }
+
+      const accounts = get().accounts.map((acc) => (acc.id === accountId ? updatedAccount : acc))
+
+      set({ accounts })
+      await localforage.setItem(STORAGE_KEY, accounts)
+
+      return { success: successCount, failed: failedCount }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to bulk apply debrid key'
+      set({ error: message })
+      throw error
+    } finally {
+      set({ loading: false })
+    }
+  },
+
+  bulkRemoveDebrid: async (accountId, addonType) => {
+    set({ loading: true, error: null })
+    let successCount = 0
+    let failedCount = 0
+
+    try {
+      const account = get().accounts.find((acc) => acc.id === accountId)
+      if (!account) {
+        throw new Error('Account not found')
+      }
+
+      // Find all addons of the specified type
+      const targetAddons = findAddonsByType(account.addons, addonType)
+
+      if (targetAddons.length === 0) {
+        throw new Error(`No addons found of type: ${addonType}`)
+      }
+
+      // Remove debrid from each addon
+      const updatedAddons = account.addons.map((addon) => {
+        const isTarget = targetAddons.some((t) => t.manifest.id === addon.manifest.id)
+        if (!isTarget) {
+          return addon
+        }
+
+        try {
+          const updated = removeDebridFromAddon(addon)
+          successCount++
+          return updated
+        } catch (error) {
+          console.error(`Failed to remove debrid from addon ${addon.manifest.id}:`, error)
+          failedCount++
+          return addon
+        }
+      })
+
+      // Sync to Stremio API
+      const authKey = await decrypt(account.authKey, getEncryptionKey())
+      await updateAddons(authKey, updatedAddons)
+
+      // Update local state
+      const updatedAccount = {
+        ...account,
+        addons: updatedAddons,
+        lastSync: new Date(),
+      }
+
+      const accounts = get().accounts.map((acc) => (acc.id === accountId ? updatedAccount : acc))
+
+      set({ accounts })
+      await localforage.setItem(STORAGE_KEY, accounts)
+
+      return { success: successCount, failed: failedCount }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to bulk remove debrid'
+      set({ error: message })
+      throw error
+    } finally {
+      set({ loading: false })
+    }
   },
 }))
