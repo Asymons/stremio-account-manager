@@ -282,18 +282,47 @@ export function FAQPage() {
                   can type commands. Copy and paste the following command exactly as shown:
                   <div className="mt-2 p-3 bg-muted rounded-md">
                     <code className="text-sm">
-                      JSON.parse(localStorage.getItem("profile")).auth.key
+                      JSON.parse(localStorage.getItem("profile"))?.auth?.key
                     </code>
                   </div>
                   Press{' '}
                   <kbd className="bg-background border px-1.5 py-0.5 rounded text-xs">Enter</kbd> to
                   execute the command.
+                  <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      <strong>Safari Users:</strong> If you get an error like "null is not an
+                      object", this usually means:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 ml-4 mt-1 text-sm text-yellow-800 dark:text-yellow-200">
+                      <li>You're in Private Browsing mode (localStorage is disabled)</li>
+                      <li>
+                        Safari's "Prevent cross-site tracking" is blocking localStorage (try
+                        disabling temporarily in Safari → Settings → Privacy)
+                      </li>
+                      <li>You haven't logged into Stremio Web yet on this browser</li>
+                    </ul>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-2">
+                      <strong>Alternative:</strong> Try using the email/password login method
+                      instead, which is more reliable across all browsers.
+                    </p>
+                  </div>
                 </li>
                 <li>
                   <strong>Copy your AuthKey:</strong> The console will display your AuthKey as a
                   string of characters (it will look something like a long alphanumeric code).
                   Select and copy this entire value. Be careful to copy the complete key - it should
                   be quite long.
+                  <div className="mt-2 p-2 bg-muted rounded-md text-sm">
+                    <p>
+                      <strong>Troubleshooting:</strong> If the command returns{' '}
+                      <code>undefined</code> or <code>null</code>:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 ml-4 mt-1">
+                      <li>Make sure you're logged into Stremio Web</li>
+                      <li>Try refreshing the page and running the command again</li>
+                      <li>Use the email/password method instead (recommended for Safari users)</li>
+                    </ol>
+                  </div>
                 </li>
                 <li>
                   <strong>Paste into the AuthKey field:</strong> Return to this application, click
