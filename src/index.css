@@ -67,6 +67,11 @@
   * {
     @apply border-border;
   }
+  html,
+  body {
+    scrollbar-gutter: stable;
+    overflow-y: auto;
+  }
   body {
     @apply bg-background text-foreground font-sans;
     font-family: Geist, system-ui, Avenir, Helvetica, Arial, sans-serif;
